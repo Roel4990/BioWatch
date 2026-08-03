@@ -1,0 +1,39 @@
+# IntelliJ / Android Studio
+*.iml
+.idea/
+.gradle/
+
+# Local config
+local.properties
+
+# Build
+/build/
+/app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Keystore (절대 올리지 않기)
+*.jks
+*.keystore
+
+# Firebase
+google-services.json
+serviceAccountKey.json
+
+# Kotlin
+.kotlin/
+
+# VS Code
+.vscode/
+
+# Temporary
+*.tmp
+*.bak
