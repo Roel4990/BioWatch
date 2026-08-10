@@ -2,10 +2,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
     <uses-permission
         android:name="android.permission.BODY_SENSORS"
         android:maxSdkVersion="35" />
+    <uses-permission
+        android:name="android.permission.BODY_SENSORS_BACKGROUND"
+        android:maxSdkVersion="35" />
     <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
 
     <uses-feature android:name="android.hardware.type.watch" />
 
@@ -30,6 +37,12 @@
         <meta-data
             android:name="com.google.android.wearable.standalone"
             android:value="true" />
+
+        <service
+            android:name=".data.service.HeartRateForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="health"
+            android:stopWithTask="false" />
 
         <activity
             android:name=".presentation.MainActivity"

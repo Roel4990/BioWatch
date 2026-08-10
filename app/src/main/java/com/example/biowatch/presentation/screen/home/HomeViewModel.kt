@@ -1,5 +1,6 @@
 package com.example.biowatch.presentation.screen.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.biowatch.domain.model.HealthServiceConnectionState
@@ -26,6 +27,8 @@ class HomeViewModel @Inject constructor(
         HomeUiState(
             heartRate = heartRate,
             isWatchWorn = connectionState != HealthServiceConnectionState.WatchNotWorn,
+            isTracking = !isPermissionDenied &&
+                connectionState != HealthServiceConnectionState.Disconnected,
             status = if (isPermissionDenied) {
                 HomeStatus.PERMISSION_REQUIRED
             } else {
@@ -44,7 +47,9 @@ class HomeViewModel @Inject constructor(
     }
 
     fun onPermissionDenied() {
+        Log.w(TAG, "Required foreground or background health permission denied")
         permissionDenied.value = true
+        healthRepository.disconnect()
     }
 
     fun stopHeartRateTracking() {
@@ -60,5 +65,9 @@ class HomeViewModel @Inject constructor(
         HealthServiceConnectionState.HeartRateUnsupported -> HomeStatus.NOT_SUPPORTED
         is HealthServiceConnectionState.MeasurementUnavailable -> HomeStatus.ADJUST_WATCH
         is HealthServiceConnectionState.Error -> HomeStatus.ERROR
+    }
+
+    private companion object {
+        const val TAG = "HomeViewModel"
     }
 }

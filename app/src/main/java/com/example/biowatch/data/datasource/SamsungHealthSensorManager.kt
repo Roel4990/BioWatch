@@ -5,6 +5,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.util.Log
 import com.example.biowatch.domain.model.HealthServiceConnectionState
 import com.samsung.android.service.health.tracking.ConnectionListener
 import com.samsung.android.service.health.tracking.HealthTracker
@@ -41,6 +42,7 @@ class SamsungHealthSensorManager @Inject constructor(
 
     private var heartRateTracker: HealthTracker? = null
     private var serviceConnected = false
+    private var trackingRequested = false
     private var isWatchWorn: Boolean? = null
 
     private val offBodyListener = object : SensorEventListener {
@@ -71,6 +73,7 @@ class SamsungHealthSensorManager @Inject constructor(
         override fun onFlushCompleted() = Unit
 
         override fun onError(error: HealthTracker.TrackerError) {
+            Log.e(TAG, "Heart rate tracker error: $error")
             _connectionState.value = HealthServiceConnectionState.Error(
                 code = null,
                 message = "Heart rate tracking failed: $error",
@@ -81,6 +84,11 @@ class SamsungHealthSensorManager @Inject constructor(
 
     private val connectionListener = object : ConnectionListener {
         override fun onConnectionSuccess() {
+            Log.i(TAG, "Connected to Samsung Health Sensor service")
+            if (!trackingRequested) {
+                runCatching { healthTrackingService.disconnectService() }
+                return
+            }
             serviceConnected = true
             _connectionState.value = try {
                 val supportedTypes = healthTrackingService
@@ -103,12 +111,14 @@ class SamsungHealthSensorManager @Inject constructor(
         }
 
         override fun onConnectionEnded() {
+            Log.i(TAG, "Samsung Health Sensor service connection ended")
             serviceConnected = false
             heartRateTracker = null
             _connectionState.value = HealthServiceConnectionState.Disconnected
         }
 
         override fun onConnectionFailed(exception: HealthTrackerException) {
+            Log.e(TAG, "Samsung Health Sensor connection failed", exception)
             _connectionState.value = HealthServiceConnectionState.Error(
                 code = exception.errorCode,
                 message = exception.message
@@ -128,8 +138,10 @@ class SamsungHealthSensorManager @Inject constructor(
             return
         }
 
+        trackingRequested = true
         _connectionState.value = HealthServiceConnectionState.Connecting
         try {
+            Log.i(TAG, "Connecting to Samsung Health Sensor service")
             registerOffBodyListener()
             healthTrackingService.connectService()
         } catch (exception: RuntimeException) {
@@ -139,10 +151,12 @@ class SamsungHealthSensorManager @Inject constructor(
 
     override fun disconnect() {
         try {
+            Log.i(TAG, "Disconnecting from Samsung Health Sensor service")
             stopHeartRateTracking()
             sensorManager?.unregisterListener(offBodyListener)
             runCatching { healthTrackingService.disconnectService() }
         } finally {
+            trackingRequested = false
             serviceConnected = false
             isWatchWorn = null
             _heartRate.value = null
@@ -213,6 +227,7 @@ class SamsungHealthSensorManager @Inject constructor(
     )
 
     private companion object {
+        const val TAG = "SamsungHealthSensor"
         const val HEART_RATE_STATUS_TOO_WEAK_SIGNAL = -10
         const val HEART_RATE_STATUS_WEAK_SIGNAL = -8
         const val HEART_RATE_STATUS_DETACHED = -3
