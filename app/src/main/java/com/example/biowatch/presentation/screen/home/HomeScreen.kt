@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.Text
 import androidx.wear.tooling.preview.devices.WearDevices
 import com.example.biowatch.R
@@ -25,10 +26,15 @@ import com.example.biowatch.presentation.theme.BioWatchTheme
 @Composable
 fun HomeScreen(
     uiState: HomeUiState,
+    onStartTracking: () -> Unit = {},
+    onStopTracking: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (!uiState.isWatchWorn) {
-        WatchNotWornContent(modifier = modifier)
+        WatchNotWornContent(
+            onStopTracking = onStopTracking,
+            modifier = modifier
+        )
         return
     }
 
@@ -65,11 +71,29 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
         DashboardDetails(uiState = uiState)
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Button(
+            onClick = if (uiState.isTracking) onStopTracking else onStartTracking
+        ) {
+            Text(
+                text = stringResource(
+                    if (uiState.isTracking) {
+                        R.string.stop_measurement
+                    } else {
+                        R.string.start_measurement
+                    }
+                )
+            )
+        }
     }
 }
 
 @Composable
-private fun WatchNotWornContent(modifier: Modifier = Modifier) {
+private fun WatchNotWornContent(
+    onStopTracking: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -91,6 +115,10 @@ private fun WatchNotWornContent(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
         )
+        Spacer(modifier = Modifier.height(12.dp))
+        Button(onClick = onStopTracking) {
+            Text(text = stringResource(R.string.stop_measurement))
+        }
     }
 }
 

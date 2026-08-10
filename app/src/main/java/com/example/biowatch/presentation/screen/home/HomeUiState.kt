@@ -3,7 +3,8 @@ package com.example.biowatch.presentation.screen.home
 data class HomeUiState(
     val heartRate: Int? = null,
     val status: HomeStatus = HomeStatus.DISCONNECTED,
-    val isWatchWorn: Boolean = true
+    val isWatchWorn: Boolean = true,
+    val isTracking: Boolean = false
 )
 
 enum class HomeStatus {
