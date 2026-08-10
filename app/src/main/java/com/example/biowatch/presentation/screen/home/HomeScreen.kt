@@ -3,15 +3,14 @@ package com.example.biowatch.presentation.screen.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,6 +27,11 @@ fun HomeScreen(
     uiState: HomeUiState,
     modifier: Modifier = Modifier
 ) {
+    if (!uiState.isWatchWorn) {
+        WatchNotWornContent(modifier = modifier)
+        return
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -45,7 +49,10 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = stringResource(R.string.heart_rate_value, uiState.heartRate),
+            text = stringResource(
+                R.string.heart_rate_value,
+                uiState.heartRate?.toString() ?: "--"
+            ),
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
@@ -57,43 +64,61 @@ fun HomeScreen(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
-
         DashboardDetails(uiState = uiState)
     }
 }
 
 @Composable
-private fun DashboardDetails(
-    uiState: HomeUiState,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
+private fun WatchNotWornContent(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        DashboardValue(
-            label = stringResource(R.string.status_label),
-            value = uiState.status,
-            modifier = Modifier.weight(1f)
+        Text(
+            text = stringResource(R.string.watch_not_worn_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center
         )
-        DashboardValue(
-            label = stringResource(R.string.steps_label),
-            value = uiState.steps.toString(),
-            modifier = Modifier.weight(1f)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.watch_not_worn_message),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
         )
     }
 }
 
 @Composable
-private fun DashboardValue(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+private fun DashboardDetails(uiState: HomeUiState, modifier: Modifier = Modifier) {
+    DashboardValue(
+        label = stringResource(R.string.status_label),
+        value = stringResource(uiState.status.stringResource),
+        modifier = modifier
+    )
+}
+
+private val HomeStatus.stringResource: Int
+    @StringRes get() = when (this) {
+        HomeStatus.DISCONNECTED -> R.string.status_disconnected
+        HomeStatus.CONNECTING -> R.string.status_connecting
+        HomeStatus.PREPARING -> R.string.status_preparing
+        HomeStatus.MEASURING -> R.string.status_measuring
+        HomeStatus.WATCH_NOT_WORN -> R.string.status_watch_not_worn
+        HomeStatus.NOT_SUPPORTED -> R.string.status_not_supported
+        HomeStatus.PERMISSION_REQUIRED -> R.string.status_permission_required
+        HomeStatus.ADJUST_WATCH -> R.string.status_adjust_watch
+        HomeStatus.ERROR -> R.string.status_error
+    }
+
+@Composable
+private fun DashboardValue(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = value,
             style = MaterialTheme.typography.titleSmall,

@@ -1,7 +1,19 @@
 package com.example.biowatch.presentation.screen.home
 
 data class HomeUiState(
-    val heartRate: Int = 72,
-    val status: String = "Connected",
-    val steps: Int = 0
+    val heartRate: Int? = null,
+    val status: HomeStatus = HomeStatus.DISCONNECTED,
+    val isWatchWorn: Boolean = true
 )
+
+enum class HomeStatus {
+    DISCONNECTED,
+    CONNECTING,
+    PREPARING,
+    MEASURING,
+    WATCH_NOT_WORN,
+    NOT_SUPPORTED,
+    PERMISSION_REQUIRED,
+    ADJUST_WATCH,
+    ERROR
+}

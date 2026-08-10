@@ -1,7 +1,7 @@
 package com.example.biowatch.di
 
 import com.example.biowatch.data.datasource.HealthDataSource
-import com.example.biowatch.data.datasource.HealthServicesManager
+import com.example.biowatch.data.datasource.SamsungHealthSensorManager
 import com.example.biowatch.data.repository.HealthRepositoryImpl
 import com.example.biowatch.domain.repository.HealthRepository
 import dagger.Binds
@@ -17,7 +17,7 @@ abstract class HealthModule {
     @Binds
     @Singleton
     abstract fun bindHealthDataSource(
-        healthServicesManager: HealthServicesManager
+        samsungHealthSensorManager: SamsungHealthSensorManager
     ): HealthDataSource
 
     @Binds

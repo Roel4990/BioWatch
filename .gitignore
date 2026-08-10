@@ -24,6 +24,9 @@ Thumbs.db
 *.jks
 *.keystore
 
+# Local Samsung SDK binaries
+app/libs/*.aar
+
 # Firebase
 google-services.json
 serviceAccountKey.json
