@@ -21,7 +21,8 @@ private const val READ_ADDITIONAL_HEALTH_DATA =
 
 @Composable
 fun HomeRoute(
-    homeViewModel: HomeViewModel = hiltViewModel()
+    homeViewModel: HomeViewModel = hiltViewModel(),
+    onOpenCollection: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val uiState by homeViewModel.uiState.collectAsState()
@@ -212,11 +213,6 @@ fun HomeRoute(
         uiState = uiState,
         onStartTracking = ::requestPermissionsAndStart,
         onStopTracking = homeViewModel::stopHeartRateTracking,
-        onSubjectIdChange = homeViewModel::updateSubjectId,
-        onCollectionLabelChange = homeViewModel::selectCollectionLabel,
-        onCollectionPurposeChange = homeViewModel::selectCollectionPurpose,
-        onStartCollection = homeViewModel::startCollection,
-        onStopCollection = homeViewModel::stopCollection,
-        onShareFiles = homeViewModel::shareSavedFiles
+        onOpenCollection = onOpenCollection
     )
 }

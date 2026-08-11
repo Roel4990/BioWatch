@@ -1,226 +1,132 @@
 package com.example.biowatch.presentation.screen.home
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import android.os.SystemClock
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.tooling.preview.devices.WearDevices
 import com.example.biowatch.R
 import com.example.biowatch.presentation.theme.BioWatchTheme
-import com.example.biowatch.domain.model.CollectionLabel
-import com.example.biowatch.domain.model.CollectionPurpose
-import java.util.Locale
 
 @Composable
 fun HomeScreen(
     uiState: HomeUiState,
     onStartTracking: () -> Unit = {},
     onStopTracking: () -> Unit = {},
-    onSubjectIdChange: (String) -> Unit = {},
-    onCollectionLabelChange: (CollectionLabel) -> Unit = {},
-    onCollectionPurposeChange: (CollectionPurpose) -> Unit = {},
-    onStartCollection: () -> Unit = {},
-    onStopCollection: () -> Unit = {},
-    onShareFiles: () -> Unit = {},
+    onOpenCollection: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var titleTapCount by remember { mutableIntStateOf(0) }
+    var lastTitleTapMillis by remember { mutableLongStateOf(0L) }
+    var showAdminPinDialog by remember { mutableStateOf(false) }
+    val onTitleClick = {
+        val now = SystemClock.elapsedRealtime()
+        titleTapCount = if (now - lastTitleTapMillis <= TITLE_TAP_TIMEOUT_MILLIS) {
+            titleTapCount + 1
+        } else {
+            1
+        }
+        lastTitleTapMillis = now
+        if (titleTapCount >= REQUIRED_TITLE_TAPS) {
+            titleTapCount = 0
+            showAdminPinDialog = true
+        }
+    }
+
     if (!uiState.isWatchWorn) {
         WatchNotWornContent(
             onStopTracking = onStopTracking,
+            onTitleClick = onTitleClick,
             modifier = modifier
         )
-        return
-    }
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = stringResource(R.string.home_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = stringResource(
-                R.string.heart_rate_value,
-                uiState.heartRate?.toString() ?: "--"
-            ),
-            style = MaterialTheme.typography.displayMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Text(
-            text = stringResource(R.string.heart_rate_label),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-        DashboardDetails(uiState = uiState)
-
-        Spacer(modifier = Modifier.height(12.dp))
-        Button(
-            onClick = if (uiState.isTracking) onStopTracking else onStartTracking
+    } else {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = stringResource(
-                    if (uiState.isTracking) {
-                        R.string.stop_measurement
-                    } else {
-                        R.string.start_measurement
-                    }
-                )
+                text = stringResource(R.string.home_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.clickable(onClick = onTitleClick)
             )
-        }
-
-        if (uiState.isTracking) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(
+                    R.string.heart_rate_value,
+                    uiState.heartRate?.toString() ?: "--"
+                ),
+                style = MaterialTheme.typography.displayMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = stringResource(R.string.heart_rate_label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = stringResource(R.string.collection_title),
-                style = MaterialTheme.typography.titleSmall
+            DashboardValue(
+                label = stringResource(R.string.status_label),
+                value = stringResource(uiState.status.stringResource)
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            BasicTextField(
-                value = uiState.subjectId,
-                onValueChange = onSubjectIdChange,
-                enabled = !uiState.isCollecting,
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            ChoiceRow(
-                firstLabel = stringResource(R.string.collection_state_normal),
-                secondLabel = stringResource(R.string.collection_state_unknown),
-                firstSelected = uiState.collectionLabel == CollectionLabel.NORMAL,
-                enabled = !uiState.isCollecting,
-                onFirst = { onCollectionLabelChange(CollectionLabel.NORMAL) },
-                onSecond = { onCollectionLabelChange(CollectionLabel.UNKNOWN) }
-            )
-            ChoiceRow(
-                firstLabel = stringResource(R.string.collection_purpose_calibration),
-                secondLabel = stringResource(R.string.collection_purpose_evaluation),
-                firstSelected = uiState.collectionPurpose == CollectionPurpose.CALIBRATION,
-                enabled = !uiState.isCollecting,
-                onFirst = { onCollectionPurposeChange(CollectionPurpose.CALIBRATION) },
-                onSecond = { onCollectionPurposeChange(CollectionPurpose.EVALUATION) }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(
-                    R.string.collection_stats,
-                    formatElapsedTime(uiState.collectionElapsedSeconds),
-                    uiState.sampleCount,
-                    uiState.samplingRateHz
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center
-            )
-            uiState.collectionMessage?.let { message ->
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(onClick = if (uiState.isTracking) onStopTracking else onStartTracking) {
                 Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = if (uiState.isCollecting) onStopCollection else onStartCollection,
-                enabled = uiState.isCollecting || uiState.subjectId.isNotBlank()
-            ) {
-                Text(
-                    stringResource(
-                        if (uiState.isCollecting) {
-                            R.string.stop_and_save_collection
+                    text = stringResource(
+                        if (uiState.isTracking) {
+                            R.string.stop_measurement
                         } else {
-                            R.string.start_collection
+                            R.string.start_measurement
                         }
                     )
                 )
             }
-            if (uiState.canShare && !uiState.isCollecting) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onShareFiles) {
-                    Text(stringResource(R.string.share_saved_files))
-                }
+        }
+    }
+
+    if (showAdminPinDialog) {
+        AdminPinDialog(
+            onDismiss = { showAdminPinDialog = false },
+            onAuthenticated = {
+                showAdminPinDialog = false
+                onOpenCollection()
             }
-        }
+        )
     }
 }
-
-@Composable
-private fun ChoiceRow(
-    firstLabel: String,
-    secondLabel: String,
-    firstSelected: Boolean,
-    enabled: Boolean,
-    onFirst: () -> Unit,
-    onSecond: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Button(
-            onClick = onFirst,
-            enabled = enabled && !firstSelected
-        ) {
-            Text(firstLabel, style = MaterialTheme.typography.labelSmall)
-        }
-        Button(
-            onClick = onSecond,
-            enabled = enabled && firstSelected
-        ) {
-            Text(secondLabel, style = MaterialTheme.typography.labelSmall)
-        }
-    }
-}
-
-private fun formatElapsedTime(totalSeconds: Long): String = String.format(
-    Locale.US,
-    "%02d:%02d",
-    totalSeconds / 60,
-    totalSeconds % 60
-)
 
 @Composable
 private fun WatchNotWornContent(
     onStopTracking: () -> Unit,
+    onTitleClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -231,6 +137,13 @@ private fun WatchNotWornContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Text(
+            text = stringResource(R.string.home_title),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.clickable(onClick = onTitleClick)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = stringResource(R.string.watch_not_worn_title),
             style = MaterialTheme.typography.titleMedium,
@@ -249,15 +162,6 @@ private fun WatchNotWornContent(
             Text(text = stringResource(R.string.stop_measurement))
         }
     }
-}
-
-@Composable
-private fun DashboardDetails(uiState: HomeUiState, modifier: Modifier = Modifier) {
-    DashboardValue(
-        label = stringResource(R.string.status_label),
-        value = stringResource(uiState.status.stringResource),
-        modifier = modifier
-    )
 }
 
 private val HomeStatus.stringResource: Int
@@ -298,3 +202,6 @@ private fun HomeScreenPreview() {
         HomeScreen(uiState = HomeUiState())
     }
 }
+
+private const val REQUIRED_TITLE_TAPS = 3
+private const val TITLE_TAP_TIMEOUT_MILLIS = 1_500L
