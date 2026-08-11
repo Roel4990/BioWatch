@@ -26,4 +26,20 @@
     <string name="health_notification_channel_description">백그라운드 심박수 측정 상태를 표시합니다.</string>
     <string name="health_notification_title">BioWatch 심박수 측정 중</string>
     <string name="health_notification_content">앱이 백그라운드에서도 심박수를 측정하고 있습니다.</string>
+    <string name="collection_title">센서 데이터 수집</string>
+    <string name="collection_state_normal">정상</string>
+    <string name="collection_state_unknown">미확정</string>
+    <string name="collection_purpose_calibration">기준 생성</string>
+    <string name="collection_purpose_evaluation">평가</string>
+    <string name="collection_stats">시간 %1$s · 샘플 %2$d · %3$.1f Hz</string>
+    <string name="start_collection">수집 시작</string>
+    <string name="stop_and_save_collection">수집 중단 및 저장</string>
+    <string name="share_saved_files">저장 파일 공유</string>
+    <string name="collection_tracking_required">메인 화면에서 심박수 측정을 먼저 시작해 주세요.</string>
+    <string name="collection_current_hr">현재 심박수 %1$s bpm</string>
+    <string name="back_to_home">메인으로 돌아가기</string>
+    <string name="admin_pin_title">관리자 PIN 입력</string>
+    <string name="admin_pin_invalid">PIN이 올바르지 않습니다.</string>
+    <string name="cancel">취소</string>
+    <string name="confirm">확인</string>
 </resources>

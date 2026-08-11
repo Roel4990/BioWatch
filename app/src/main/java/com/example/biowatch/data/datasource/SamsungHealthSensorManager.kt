@@ -6,6 +6,10 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
+import com.example.biowatch.data.storage.SensorDataRecorder
+import com.example.biowatch.domain.model.AccelerationSample
+import com.example.biowatch.domain.model.CollectionConfig
+import com.example.biowatch.domain.model.CollectionState
 import com.example.biowatch.domain.model.HealthServiceConnectionState
 import com.samsung.android.service.health.tracking.ConnectionListener
 import com.samsung.android.service.health.tracking.HealthTracker
@@ -13,6 +17,7 @@ import com.samsung.android.service.health.tracking.HealthTrackerException
 import com.samsung.android.service.health.tracking.HealthTrackingService
 import com.samsung.android.service.health.tracking.data.DataPoint
 import com.samsung.android.service.health.tracking.data.HealthTrackerType
+import com.samsung.android.service.health.tracking.data.PpgType
 import com.samsung.android.service.health.tracking.data.ValueKey
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +28,8 @@ import javax.inject.Singleton
 
 @Singleton
 class SamsungHealthSensorManager @Inject constructor(
-    @ApplicationContext context: Context
+    @ApplicationContext context: Context,
+    private val sensorDataRecorder: SensorDataRecorder
 ) : HealthDataSource {
 
     private val sensorManager = context.getSystemService(SensorManager::class.java)
@@ -40,10 +46,17 @@ class SamsungHealthSensorManager @Inject constructor(
     private val _heartRate = MutableStateFlow<Int?>(null)
     override val heartRate: StateFlow<Int?> = _heartRate.asStateFlow()
 
+    private val _collectionState = MutableStateFlow(CollectionState())
+    override val collectionState: StateFlow<CollectionState> = _collectionState.asStateFlow()
+
     private var heartRateTracker: HealthTracker? = null
+    private var ppgTracker: HealthTracker? = null
+    private var accelerometerTracker: HealthTracker? = null
     private var serviceConnected = false
     private var trackingRequested = false
     private var isWatchWorn: Boolean? = null
+    private var latestAcceleration: AccelerationSample? = null
+    private var supportedTypes: List<HealthTrackerType> = emptyList()
 
     private val offBodyListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
@@ -82,6 +95,43 @@ class SamsungHealthSensorManager @Inject constructor(
         }
     }
 
+    private val ppgListener = object : HealthTracker.TrackerEventListener {
+        override fun onDataReceived(dataPoints: List<DataPoint>) {
+            dataPoints.forEach(::handlePpgData)
+        }
+
+        override fun onFlushCompleted() = Unit
+
+        override fun onError(error: HealthTracker.TrackerError) {
+            Log.e(TAG, "PPG tracker error: $error")
+            stopCollectionWithError("PPG 센서 오류: $error")
+        }
+    }
+
+    private val accelerometerListener = object : HealthTracker.TrackerEventListener {
+        override fun onDataReceived(dataPoints: List<DataPoint>) {
+            dataPoints.lastOrNull()?.let { dataPoint ->
+                latestAcceleration = AccelerationSample(
+                    timestampMillis = dataPoint.timestamp,
+                    x = dataPoint.getValue(ValueKey.AccelerometerSet.ACCELEROMETER_X),
+                    y = dataPoint.getValue(ValueKey.AccelerometerSet.ACCELEROMETER_Y),
+                    z = dataPoint.getValue(ValueKey.AccelerometerSet.ACCELEROMETER_Z)
+                )
+            }
+        }
+
+        override fun onFlushCompleted() = Unit
+
+        override fun onError(error: HealthTracker.TrackerError) {
+            Log.e(TAG, "Accelerometer tracker error: $error")
+            stopAccelerometerTracking()
+            _collectionState.value = _collectionState.value.copy(
+                accelerometerSupported = false,
+                errorMessage = "가속도 센서 권한 또는 연결을 확인해 주세요."
+            )
+        }
+    }
+
     private val connectionListener = object : ConnectionListener {
         override fun onConnectionSuccess() {
             Log.i(TAG, "Connected to Samsung Health Sensor service")
@@ -91,9 +141,15 @@ class SamsungHealthSensorManager @Inject constructor(
             }
             serviceConnected = true
             _connectionState.value = try {
-                val supportedTypes = healthTrackingService
+                supportedTypes = healthTrackingService
                     .trackingCapability
                     .supportHealthTrackerTypes
+                Log.i(TAG, "Supported tracker types: $supportedTypes")
+                _collectionState.value = _collectionState.value.copy(
+                    ppgSupported = HealthTrackerType.PPG_CONTINUOUS in supportedTypes,
+                    accelerometerSupported =
+                        HealthTrackerType.ACCELEROMETER_CONTINUOUS in supportedTypes
+                )
 
                 if (HealthTrackerType.HEART_RATE_CONTINUOUS in supportedTypes) {
                     if (isWatchWorn == false) {
@@ -152,6 +208,7 @@ class SamsungHealthSensorManager @Inject constructor(
     override fun disconnect() {
         try {
             Log.i(TAG, "Disconnecting from Samsung Health Sensor service")
+            if (_collectionState.value.isCollecting) stopCollection()
             stopHeartRateTracking()
             sensorManager?.unregisterListener(offBodyListener)
             runCatching { healthTrackingService.disconnectService() }
@@ -159,8 +216,64 @@ class SamsungHealthSensorManager @Inject constructor(
             trackingRequested = false
             serviceConnected = false
             isWatchWorn = null
+            supportedTypes = emptyList()
             _heartRate.value = null
             _connectionState.value = HealthServiceConnectionState.Disconnected
+        }
+    }
+
+    override fun startCollection(config: CollectionConfig) {
+        if (!serviceConnected) {
+            _collectionState.value = _collectionState.value.copy(
+                errorMessage = "센서 서비스 연결 후 수집을 시작해 주세요."
+            )
+            return
+        }
+        if (HealthTrackerType.PPG_CONTINUOUS !in supportedTypes) {
+            _collectionState.value = _collectionState.value.copy(
+                ppgSupported = false,
+                errorMessage = "이 워치는 raw green PPG를 지원하지 않습니다."
+            )
+            return
+        }
+
+        runCatching {
+            _collectionState.value = sensorDataRecorder.start(config).copy(
+                ppgSupported = true,
+                accelerometerSupported =
+                    HealthTrackerType.ACCELEROMETER_CONTINUOUS in supportedTypes
+            )
+            startPpgTracking()
+            startAccelerometerTracking()
+            Log.i(TAG, "Sensor data collection started: $config")
+        }.onFailure { exception ->
+            Log.e(TAG, "Failed to start sensor data collection", exception)
+            stopPpgTracking()
+            stopAccelerometerTracking()
+            val stoppedState = runCatching {
+                sensorDataRecorder.stop(
+                    ppgSupported = true,
+                    accelerometerSupported =
+                        HealthTrackerType.ACCELEROMETER_CONTINUOUS in supportedTypes
+                )
+            }.getOrDefault(_collectionState.value.copy(isCollecting = false))
+            _collectionState.value = stoppedState.copy(
+                errorMessage = exception.message ?: "데이터 수집을 시작할 수 없습니다."
+            )
+        }
+    }
+
+    override fun stopCollection() {
+        stopPpgTracking()
+        stopAccelerometerTracking()
+        latestAcceleration = null
+        if (_collectionState.value.isCollecting) {
+            _collectionState.value = sensorDataRecorder.stop(
+                ppgSupported = HealthTrackerType.PPG_CONTINUOUS in supportedTypes,
+                accelerometerSupported =
+                    HealthTrackerType.ACCELEROMETER_CONTINUOUS in supportedTypes
+            )
+            Log.i(TAG, "Sensor data collection saved: ${_collectionState.value}")
         }
     }
 
@@ -177,6 +290,32 @@ class SamsungHealthSensorManager @Inject constructor(
     private fun stopHeartRateTracking() {
         runCatching { heartRateTracker?.unsetEventListener() }
         heartRateTracker = null
+    }
+
+    private fun startPpgTracking() {
+        if (ppgTracker != null) return
+        ppgTracker = healthTrackingService
+            .getHealthTracker(HealthTrackerType.PPG_CONTINUOUS, setOf(PpgType.GREEN))
+            .also { it.setEventListener(ppgListener) }
+    }
+
+    private fun stopPpgTracking() {
+        runCatching { ppgTracker?.unsetEventListener() }
+        ppgTracker = null
+    }
+
+    private fun startAccelerometerTracking() {
+        if (accelerometerTracker != null ||
+            HealthTrackerType.ACCELEROMETER_CONTINUOUS !in supportedTypes
+        ) return
+        accelerometerTracker = healthTrackingService
+            .getHealthTracker(HealthTrackerType.ACCELEROMETER_CONTINUOUS)
+            .also { it.setEventListener(accelerometerListener) }
+    }
+
+    private fun stopAccelerometerTracking() {
+        runCatching { accelerometerTracker?.unsetEventListener() }
+        accelerometerTracker = null
     }
 
     private fun registerOffBodyListener() {
@@ -218,6 +357,30 @@ class SamsungHealthSensorManager @Inject constructor(
                 )
             }
         }
+    }
+
+    private fun handlePpgData(dataPoint: DataPoint) {
+        val state = sensorDataRecorder.recordPpg(
+            sensorTimestamp = dataPoint.timestamp,
+            heartRate = _heartRate.value,
+            ppgGreen = dataPoint.getValue(ValueKey.PpgSet.PPG_GREEN),
+            ppgStatus = dataPoint.getValue(ValueKey.PpgSet.GREEN_STATUS),
+            isOffBody = if (isWatchWorn == false) 1 else 0,
+            acceleration = latestAcceleration
+        ) ?: return
+        _collectionState.value = state.copy(
+            ppgSupported = true,
+            accelerometerSupported =
+                HealthTrackerType.ACCELEROMETER_CONTINUOUS in supportedTypes
+        )
+        if (state.sampleCount == 1L) {
+            Log.i(TAG, "First PPG sensor timestamp: ${dataPoint.timestamp}")
+        }
+    }
+
+    private fun stopCollectionWithError(message: String) {
+        stopCollection()
+        _collectionState.value = _collectionState.value.copy(errorMessage = message)
     }
 
     private fun RuntimeException.toConnectionError() = HealthServiceConnectionState.Error(

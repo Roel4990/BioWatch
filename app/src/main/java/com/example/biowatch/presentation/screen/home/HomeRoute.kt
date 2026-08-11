@@ -16,10 +16,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 private const val READ_HEART_RATE = "android.permission.health.READ_HEART_RATE"
 private const val READ_HEALTH_DATA_IN_BACKGROUND =
     "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"
+private const val READ_ADDITIONAL_HEALTH_DATA =
+    "com.samsung.android.hardware.sensormanager.permission.READ_ADDITIONAL_HEALTH_DATA"
 
 @Composable
 fun HomeRoute(
-    homeViewModel: HomeViewModel = hiltViewModel()
+    homeViewModel: HomeViewModel = hiltViewModel(),
+    onOpenCollection: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val uiState by homeViewModel.uiState.collectAsState()
@@ -39,13 +42,54 @@ fun HomeRoute(
         null
     }
 
-    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
+    val activityRecognitionPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
             homeViewModel.startHeartRateTracking()
         } else {
             homeViewModel.onPermissionDenied()
+        }
+    }
+
+    val additionalHealthPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            homeViewModel.onPermissionDenied()
+        } else if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACTIVITY_RECOGNITION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            homeViewModel.startHeartRateTracking()
+        } else {
+            activityRecognitionPermissionLauncher.launch(
+                Manifest.permission.ACTIVITY_RECOGNITION
+            )
+        }
+    }
+    val backgroundPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (!isGranted) {
+            homeViewModel.onPermissionDenied()
+        } else if (ContextCompat.checkSelfPermission(
+                context,
+                READ_ADDITIONAL_HEALTH_DATA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            additionalHealthPermissionLauncher.launch(READ_ADDITIONAL_HEALTH_DATA)
+        } else if (ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACTIVITY_RECOGNITION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            activityRecognitionPermissionLauncher.launch(
+                Manifest.permission.ACTIVITY_RECOGNITION
+            )
+        } else {
+            homeViewModel.startHeartRateTracking()
         }
     }
     val heartRatePermissionLauncher = rememberLauncherForActivityResult(
@@ -58,7 +102,23 @@ fun HomeRoute(
                 backgroundPermission
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            homeViewModel.startHeartRateTracking()
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    READ_ADDITIONAL_HEALTH_DATA
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                additionalHealthPermissionLauncher.launch(READ_ADDITIONAL_HEALTH_DATA)
+            } else if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.ACTIVITY_RECOGNITION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                activityRecognitionPermissionLauncher.launch(
+                    Manifest.permission.ACTIVITY_RECOGNITION
+                )
+            } else {
+                homeViewModel.startHeartRateTracking()
+            }
         } else {
             backgroundPermissionLauncher.launch(backgroundPermission)
         }
@@ -80,6 +140,22 @@ fun HomeRoute(
                 backgroundPermission
             ) != PackageManager.PERMISSION_GRANTED -> {
                 backgroundPermissionLauncher.launch(backgroundPermission)
+            }
+
+            ContextCompat.checkSelfPermission(
+                context,
+                READ_ADDITIONAL_HEALTH_DATA
+            ) != PackageManager.PERMISSION_GRANTED -> {
+                additionalHealthPermissionLauncher.launch(READ_ADDITIONAL_HEALTH_DATA)
+            }
+
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACTIVITY_RECOGNITION
+            ) != PackageManager.PERMISSION_GRANTED -> {
+                activityRecognitionPermissionLauncher.launch(
+                    Manifest.permission.ACTIVITY_RECOGNITION
+                )
             }
 
             else -> homeViewModel.startHeartRateTracking()
@@ -109,6 +185,22 @@ fun HomeRoute(
                 backgroundPermissionLauncher.launch(backgroundPermission)
             }
 
+            ContextCompat.checkSelfPermission(
+                context,
+                READ_ADDITIONAL_HEALTH_DATA
+            ) != PackageManager.PERMISSION_GRANTED -> {
+                additionalHealthPermissionLauncher.launch(READ_ADDITIONAL_HEALTH_DATA)
+            }
+
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACTIVITY_RECOGNITION
+            ) != PackageManager.PERMISSION_GRANTED -> {
+                activityRecognitionPermissionLauncher.launch(
+                    Manifest.permission.ACTIVITY_RECOGNITION
+                )
+            }
+
             else -> homeViewModel.startHeartRateTracking()
         }
     }
@@ -120,6 +212,7 @@ fun HomeRoute(
     HomeScreen(
         uiState = uiState,
         onStartTracking = ::requestPermissionsAndStart,
-        onStopTracking = homeViewModel::stopHeartRateTracking
+        onStopTracking = homeViewModel::stopHeartRateTracking,
+        onOpenCollection = onOpenCollection
     )
 }

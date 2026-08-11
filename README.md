@@ -27,6 +27,8 @@ app/libs/samsung-health-sensor-api-1.4.1.aar
 
 - API 33 이상
   - `POST_NOTIFICATIONS`
+- 센서 데이터
+  - `ACTIVITY_RECOGNITION`
 - API 35 이하
   - `BODY_SENSORS`
   - API 33~35: `BODY_SENSORS_BACKGROUND`
@@ -36,6 +38,8 @@ app/libs/samsung-health-sensor-api-1.4.1.aar
 - Foreground Service
   - `FOREGROUND_SERVICE`
   - `FOREGROUND_SERVICE_HEALTH`
+- Samsung raw sensor data
+  - `READ_ADDITIONAL_HEALTH_DATA`
 
 전면 심박수 권한과 백그라운드 권한은 별도로 요청합니다. 백그라운드 권한을 거부하면 Foreground Service를 시작하지 않습니다.
 
@@ -69,3 +73,44 @@ HeartRateService
 SamsungHealthSensor
 HealthRepository
 ```
+
+## 센서 데이터 저장
+
+메인 화면의 `BioWatch` 제목을 빠르게 세 번 누르고 관리자 PIN을 입력해 전용 화면으로 이동한 뒤 익명 subject ID, 상태와 수집 목적을 설정하고 `수집 시작`을 누릅니다. 일반 심박수 화면에서는 CSV 파일을 생성하지 않습니다. 상태는 `normal`, `unknown`만 제공하며 의료 장비로 확인되지 않은 부정맥 라벨은 생성하지 않습니다.
+
+수집 목적은 다음과 같습니다.
+
+- `calibration`: 개인 정상 기준 생성용
+- `evaluation`: 기준 생성 이후 평가용
+
+수집 중에는 경과 시간, PPG 샘플 수, 센서 timestamp 기준 예상 샘플링 주파수를 표시합니다. `수집 중단 및 저장`을 누르면 UTF-8 CSV와 JSON 메타데이터를 함께 생성합니다.
+
+```text
+Android/data/com.example.biowatch/files/Documents/BioWatch/
+```
+
+파일명 형식은 다음과 같습니다.
+
+```text
+SamsungWatch_{subjectId}_{state}_{purpose}_{startTimestamp}.csv
+SamsungWatch_{subjectId}_{state}_{purpose}_{startTimestamp}.json
+```
+
+CSV 컬럼은 다음과 같습니다.
+
+```text
+Timestamp,HR,PPG_GREEN,PPG_STAT,IS_OFFBODY,ACC_X,ACC_Y,ACC_Z
+```
+
+- `Timestamp`: PPG 센서 이벤트 timestamp를 워치 시간대가 포함된 ISO 8601 형식으로 변환한 값
+- `HR`: 해당 PPG 행 시점의 마지막 유효 bpm. 아직 유효한 값이 없으면 빈 값
+- `PPG_GREEN`: Samsung Health Sensor SDK가 제공한 green PPG 원본 정수값
+- `PPG_STAT`: SDK의 green PPG 상태 코드 원본값
+- `IS_OFFBODY`: `0=착용 또는 확인 불가`, `1=미착용`
+- `ACC_X`, `ACC_Y`, `ACC_Z`: 해당 PPG 행 시점의 마지막 가속도 원본 정수값. 미지원 또는 아직 수신 전이면 빈 값
+
+Samsung Health Sensor SDK 공개 API는 PPG 및 가속도 정수값의 물리 단위를 명시하지 않으므로 정규화나 단위 변환 없이 원본값을 저장합니다. 앱은 값을 보간하거나 가짜 PPG를 생성하지 않습니다.
+
+실제 Galaxy Watch SM-L330에서 SDK 1.4.1의 `PPG_CONTINUOUS`, `HEART_RATE_CONTINUOUS`, `ACCELEROMETER_CONTINUOUS` 지원을 확인했습니다. 다른 모델에서는 앱 실행 시 tracker 지원 여부를 다시 확인하며 raw PPG가 지원되지 않으면 수집을 시작하지 않습니다.
+
+정상 기준 데이터는 앉아서 5분 이상 안정을 취한 뒤 시계를 손목에 밀착하고, 말하거나 걷거나 운동하지 않은 상태에서 5~10분 수집하는 것을 권장합니다. calibration과 evaluation에는 동일한 센서 샘플을 재사용하지 않습니다.

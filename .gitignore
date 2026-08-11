@@ -27,6 +27,9 @@ Thumbs.db
 # Local Samsung SDK binaries
 app/libs/*.aar
 
+# Local sensor collection data
+BioWatchData/
+
 # Firebase
 google-services.json
 serviceAccountKey.json
