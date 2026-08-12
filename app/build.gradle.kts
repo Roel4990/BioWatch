@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,20 @@ plugins {
     alias(libs.plugins.kotlin.kapt)
     alias(libs.plugins.hilt)
 }
+
+val localEnvironment = Properties().apply {
+    val environmentFile = rootProject.file(".env")
+    if (environmentFile.exists()) {
+        environmentFile.inputStream().use { load(it) }
+    }
+}
+
+fun environmentValue(name: String): String =
+    providers.environmentVariable(name).orNull
+        ?: localEnvironment.getProperty(name).orEmpty()
+
+fun buildConfigString(value: String): String =
+    34.toChar() + value + 34.toChar()
 
 android {
     namespace = "com.example.biowatch"
@@ -19,6 +35,8 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        buildConfigField("String", "ANALYSIS_API_BASE_URL", buildConfigString(environmentValue("ANALYSIS_API_BASE_URL")))
+        buildConfigField("String", "ANALYSIS_API_TOKEN", buildConfigString(environmentValue("ANALYSIS_API_TOKEN")))
     }
 
     buildTypes {
@@ -40,6 +58,7 @@ android {
     useLibrary("wear-sdk")
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -58,6 +77,8 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.hilt.lifecycle.viewmodel.compose)
+    implementation(libs.okhttp)
+    implementation(libs.datastore.preferences)
     implementation(files("libs/samsung-health-sensor-api-1.4.1.aar"))
     kapt(libs.hilt.compiler)
     androidTestImplementation(platform(libs.compose.bom))

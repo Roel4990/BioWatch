@@ -44,6 +44,9 @@ fun CollectionScreen(
     onStartCollection: () -> Unit,
     onStopCollection: () -> Unit,
     onShareFiles: () -> Unit,
+    onCheckServer: () -> Unit,
+    onUploadSavedData: () -> Unit,
+    onUploadStressPrediction: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -60,6 +63,31 @@ fun CollectionScreen(
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center
         )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = stringResource(
+                if (uiState.hasBaseline) {
+                    R.string.baseline_ready
+                } else {
+                    R.string.baseline_required
+                }
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = if (uiState.hasBaseline) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.error
+            },
+            textAlign = TextAlign.Center
+        )
+        if (uiState.hasBaseline) {
+            Text(
+                text = stringResource(R.string.baseline_choice_guide),
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
+        }
         Spacer(modifier = Modifier.height(8.dp))
 
         if (!uiState.isTracking) {
@@ -165,6 +193,46 @@ fun CollectionScreen(
             Button(onClick = onShareFiles) {
                 Text(stringResource(R.string.share_saved_files))
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onUploadSavedData,
+                enabled = !uiState.isAnalysisLoading
+            ) {
+                Text(
+                    stringResource(
+                        if (uiState.collectionPurpose == CollectionPurpose.CALIBRATION) {
+                            R.string.create_personal_baseline
+                        } else {
+                            R.string.request_prediction
+                        }
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
+            if (uiState.collectionPurpose == CollectionPurpose.EVALUATION) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onUploadStressPrediction,
+                    enabled = !uiState.isAnalysisLoading
+                ) {
+                    Text(
+                        stringResource(R.string.request_acute_stress_prediction),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = onCheckServer, enabled = !uiState.isAnalysisLoading) {
+            Text(stringResource(R.string.check_analysis_server), textAlign = TextAlign.Center)
+        }
+        uiState.analysisMessage?.let { message ->
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
         Button(onClick = onBack) {
@@ -260,7 +328,10 @@ private fun CollectionScreenPreview() {
             onCollectionPurposeChange = {},
             onStartCollection = {},
             onStopCollection = {},
-            onShareFiles = {}
+            onShareFiles = {},
+            onCheckServer = {},
+            onUploadSavedData = {},
+            onUploadStressPrediction = {}
         )
     }
 }

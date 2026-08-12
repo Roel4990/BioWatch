@@ -17,4 +17,6 @@ interface HealthDataSource {
     fun startCollection(config: CollectionConfig)
 
     fun stopCollection()
+
+    fun deleteSavedFiles(): Boolean
 }

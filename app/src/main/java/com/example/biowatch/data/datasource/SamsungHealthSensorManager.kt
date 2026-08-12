@@ -23,6 +23,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -275,6 +276,25 @@ class SamsungHealthSensorManager @Inject constructor(
             )
             Log.i(TAG, "Sensor data collection saved: ${_collectionState.value}")
         }
+    }
+
+    override fun deleteSavedFiles(): Boolean {
+        val current = _collectionState.value
+        val csvDeleted = deleteFile(current.savedCsvPath)
+        val jsonDeleted = deleteFile(current.savedJsonPath)
+        _collectionState.value = current.copy(
+            savedCsvPath = current.savedCsvPath.takeUnless { csvDeleted },
+            savedJsonPath = current.savedJsonPath.takeUnless { jsonDeleted }
+        )
+        return csvDeleted && jsonDeleted
+    }
+
+    private fun deleteFile(path: String?): Boolean {
+        if (path == null) return true
+        val file = File(path)
+        val deleted = !file.exists() || file.delete()
+        if (!deleted) Log.w(TAG, "Failed to delete uploaded sensor file: ${file.name}")
+        return deleted
     }
 
     private fun startHeartRateTracking() {

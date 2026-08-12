@@ -18,7 +18,11 @@ data class HomeUiState(
     val ppgSupported: Boolean? = null,
     val accelerometerSupported: Boolean? = null,
     val canShare: Boolean = false,
-    val collectionMessage: String? = null
+    val collectionMessage: String? = null,
+    val analysisMessage: String? = null,
+    val isAnalysisLoading: Boolean = false,
+    val hasBaseline: Boolean = false,
+    val baselineCreatedAt: String? = null
 )
 
 enum class HomeStatus {

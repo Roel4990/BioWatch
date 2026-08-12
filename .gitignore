@@ -5,6 +5,7 @@
 
 # Local config
 local.properties
+.env
 
 # Build
 /build/
