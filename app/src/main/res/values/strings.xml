@@ -53,4 +53,13 @@
     <string name="server_connected">분석 서버 연결 완료</string>
     <string name="server_connection_required">FastAPI 서버에 연결되어야 앱을 사용할 수 있습니다.</string>
     <string name="retry_server_connection">다시 연결</string>
+    <string name="subject_setup_title">사용자 설정</string>
+    <string name="subject_setup_description">익명 사용자 ID를 입력해 주세요.</string>
+    <string name="subject_baseline_found">이 기기에 저장된 개인 기준이 있습니다.</string>
+    <string name="subject_baseline_not_found">새 개인 기준 측정이 필요합니다.</string>
+    <string name="continue_action">계속</string>
+    <string name="baseline_choice_title">개인 기준 선택</string>
+    <string name="baseline_choice_description">저장된 기준을 사용하거나 새로 측정할 수 있습니다.</string>
+    <string name="use_existing_baseline">기존 기준 사용</string>
+    <string name="create_new_baseline">새로 측정</string>
 </resources>

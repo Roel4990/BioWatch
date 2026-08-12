@@ -10,9 +10,11 @@ import com.example.biowatch.presentation.screen.collection.CollectionRoute
 import com.example.biowatch.presentation.screen.home.HomeRoute
 import com.example.biowatch.presentation.screen.home.HomeViewModel
 import com.example.biowatch.presentation.screen.startup.StartupHealthRoute
+import com.example.biowatch.presentation.screen.subject.SubjectSetupRoute
 
 private object Destination {
     const val STARTUP = "startup"
+    const val SUBJECT = "subject"
     const val HOME = "home"
     const val COLLECTION = "collection"
 }
@@ -32,8 +34,22 @@ fun BioWatchNavHost(
         composable(Destination.STARTUP) {
             StartupHealthRoute(
                 onServerReady = {
-                    navController.navigate(Destination.HOME) {
+                    navController.navigate(Destination.SUBJECT) {
                         popUpTo(Destination.STARTUP) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Destination.SUBJECT) {
+            SubjectSetupRoute(
+                onUseExistingBaseline = {
+                    navController.navigate(Destination.HOME) {
+                        popUpTo(Destination.SUBJECT) { inclusive = true }
+                    }
+                },
+                onCreateBaseline = {
+                    navController.navigate(Destination.HOME) {
+                        popUpTo(Destination.SUBJECT) { inclusive = true }
                     }
                 }
             )
