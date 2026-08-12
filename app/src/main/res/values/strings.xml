@@ -59,7 +59,16 @@
     <string name="subject_baseline_not_found">새 개인 기준 측정이 필요합니다.</string>
     <string name="continue_action">계속</string>
     <string name="baseline_choice_title">개인 기준 선택</string>
-    <string name="baseline_choice_description">저장된 기준을 사용하거나 새로 측정할 수 있습니다.</string>
-    <string name="use_existing_baseline">기존 기준 사용</string>
+    <string name="baseline_choice_description">저장된 기준을 사용하거나\n새로 측정할 수 있습니다.</string>
+    <string name="use_existing_baseline">기준 사용</string>
     <string name="create_new_baseline">새로 측정</string>
+    <string name="calibration_title">개인 기준 측정</string>
+    <string name="calibration_description">5분간 평균 생체 신호를 측정합니다.\n편안하게 앉아 움직임을 최소화해 주세요.</string>
+    <string name="calibration_preparing">센서 연결을 준비하고 있습니다.</string>
+    <string name="calibration_uploading">측정 완료 · 개인 기준 생성 중</string>
+    <string name="calibration_success">개인 기준 생성 완료</string>
+    <string name="calibration_failed">개인 기준 측정에 실패했습니다.</string>
+    <string name="calibration_current_hr">현재 심박수 %1$s bpm</string>
+    <string name="calibration_watch_warning">워치를 손목에 밀착해 주세요.</string>
+    <string name="retry_calibration">다시 시도</string>
 </resources>

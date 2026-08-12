@@ -7,6 +7,7 @@ import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.biowatch.presentation.screen.collection.CollectionRoute
+import com.example.biowatch.presentation.screen.calibration.CalibrationRoute
 import com.example.biowatch.presentation.screen.home.HomeRoute
 import com.example.biowatch.presentation.screen.home.HomeViewModel
 import com.example.biowatch.presentation.screen.startup.StartupHealthRoute
@@ -15,6 +16,7 @@ import com.example.biowatch.presentation.screen.subject.SubjectSetupRoute
 private object Destination {
     const val STARTUP = "startup"
     const val SUBJECT = "subject"
+    const val CALIBRATION = "calibration"
     const val HOME = "home"
     const val COLLECTION = "collection"
 }
@@ -48,8 +50,17 @@ fun BioWatchNavHost(
                     }
                 },
                 onCreateBaseline = {
-                    navController.navigate(Destination.HOME) {
+                    navController.navigate(Destination.CALIBRATION) {
                         popUpTo(Destination.SUBJECT) { inclusive = true }
+                    }
+                }
+            )
+        }
+        composable(Destination.CALIBRATION) {
+            CalibrationRoute(
+                onCalibrationComplete = {
+                    navController.navigate(Destination.HOME) {
+                        popUpTo(Destination.CALIBRATION) { inclusive = true }
                     }
                 }
             )

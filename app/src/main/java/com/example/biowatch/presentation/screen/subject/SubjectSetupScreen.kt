@@ -3,12 +3,15 @@ package com.example.biowatch.presentation.screen.subject
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -45,7 +48,7 @@ fun SubjectSetupScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 32.dp),
+            .padding(horizontal = 28.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -55,13 +58,6 @@ fun SubjectSetupScreen(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.subject_setup_description),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(12.dp))
         BasicTextField(
             value = uiState.subjectId,
             onValueChange = onSubjectIdChange,
@@ -80,7 +76,7 @@ fun SubjectSetupScreen(
                 )
                 .padding(horizontal = 12.dp, vertical = 10.dp)
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = stringResource(
                 if (uiState.hasMatchingBaseline) {
@@ -109,9 +105,16 @@ fun SubjectSetupScreen(
         Spacer(modifier = Modifier.height(12.dp))
         Button(
             onClick = onContinue,
+            modifier = Modifier
+                .width(120.dp)
+                .heightIn(min = 40.dp),
             enabled = !uiState.isLoading && uiState.subjectId.isNotBlank()
         ) {
-            Text(stringResource(R.string.continue_action))
+            Text(
+                text = stringResource(R.string.continue_action),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 
@@ -133,6 +136,7 @@ private fun BaselineChoiceDialog(
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
+                .padding(horizontal = 12.dp)
                 .fillMaxWidth()
                 .background(
                     color = MaterialTheme.colorScheme.surfaceContainer,
@@ -158,16 +162,24 @@ private fun BaselineChoiceDialog(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(onClick = onUseExisting) {
+                Button(
+                    onClick = onUseExisting,
+                    modifier = Modifier.heightIn(min = 40.dp)
+                ) {
                     Text(
                         text = stringResource(R.string.use_existing_baseline),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        style =MaterialTheme.typography.labelSmall
                     )
                 }
-                Button(onClick = onCreateNew) {
+                Button(
+                    onClick = onCreateNew,
+                    modifier = Modifier.heightIn(min = 40.dp)
+                ) {
                     Text(
                         text = stringResource(R.string.create_new_baseline),
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        style =MaterialTheme.typography.labelSmall
                     )
                 }
             }
