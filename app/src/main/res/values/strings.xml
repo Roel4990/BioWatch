@@ -49,4 +49,8 @@
     <string name="admin_pin_invalid">PIN이 올바르지 않습니다.</string>
     <string name="cancel">취소</string>
     <string name="confirm">확인</string>
+    <string name="server_checking">분석 서버 연결 확인 중</string>
+    <string name="server_connected">분석 서버 연결 완료</string>
+    <string name="server_connection_required">FastAPI 서버에 연결되어야 앱을 사용할 수 있습니다.</string>
+    <string name="retry_server_connection">다시 연결</string>
 </resources>

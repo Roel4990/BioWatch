@@ -9,8 +9,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.biowatch.presentation.screen.collection.CollectionRoute
 import com.example.biowatch.presentation.screen.home.HomeRoute
 import com.example.biowatch.presentation.screen.home.HomeViewModel
+import com.example.biowatch.presentation.screen.startup.StartupHealthRoute
 
 private object Destination {
+    const val STARTUP = "startup"
     const val HOME = "home"
     const val COLLECTION = "collection"
 }
@@ -24,9 +26,18 @@ fun BioWatchNavHost(
 
     SwipeDismissableNavHost(
         navController = navController,
-        startDestination = Destination.HOME,
+        startDestination = Destination.STARTUP,
         modifier = modifier
     ) {
+        composable(Destination.STARTUP) {
+            StartupHealthRoute(
+                onServerReady = {
+                    navController.navigate(Destination.HOME) {
+                        popUpTo(Destination.STARTUP) { inclusive = true }
+                    }
+                }
+            )
+        }
         composable(Destination.HOME) {
             HomeRoute(
                 homeViewModel = homeViewModel,
