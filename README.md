@@ -9,7 +9,7 @@ Galaxy Watch의 Samsung Health Sensor SDK를 사용해 심박수를 측정하는
 - Galaxy Watch4 이상
 - Wear OS Powered by Samsung
 - Samsung Health Sensor SDK 1.4.1
-- Android Studio 내장 JDK 또는 JDK 17 이상
+- Android Studio 내장 JDK 또는 JDK 17
 
 Samsung SDK AAR는 라이선스 제한으로 저장소에 포함하지 않습니다. Samsung Developer에서 SDK를 내려받은 후 다음 경로에 직접 추가해야 합니다.
 
@@ -114,3 +114,35 @@ Samsung Health Sensor SDK 공개 API는 PPG 및 가속도 정수값의 물리 �
 실제 Galaxy Watch SM-L330에서 SDK 1.4.1의 `PPG_CONTINUOUS`, `HEART_RATE_CONTINUOUS`, `ACCELEROMETER_CONTINUOUS` 지원을 확인했습니다. 다른 모델에서는 앱 실행 시 tracker 지원 여부를 다시 확인하며 raw PPG가 지원되지 않으면 수집을 시작하지 않습니다.
 
 정상 기준 데이터는 앉아서 5분 이상 안정을 취한 뒤 시계를 손목에 밀착하고, 말하거나 걷거나 운동하지 않은 상태에서 5~10분 수집하는 것을 권장합니다. calibration과 evaluation에는 동일한 센서 샘플을 재사용하지 않습니다.
+
+## 분석 서버 연결 시험
+
+프로젝트 루트의 `.env.example`을 참고해 Git에 포함되지 않는 `.env`에 서버 PC의 실제 IPv4 주소와 토큰을 입력합니다.
+
+```dotenv
+ANALYSIS_API_BASE_URL=http://192.168.0.10:8000
+ANALYSIS_API_TOKEN=local-dev-token
+```
+
+워치와 서버 PC를 같은 Wi-Fi에 연결하고 연구 데이터 수집 화면에서 다음 순서로 시험합니다.
+
+1. `분석 서버 연결 확인`을 눌러 모델 준비 상태를 확인합니다.
+2. 동일한 subject ID로 `정상`, `기준 생성`을 선택해 5분 이상 수집하고 저장합니다.
+3. `개인 기준 생성 요청`을 눌러 baseline을 생성합니다. `subject_id`, `baseline_id`, `baseline_created_at`은 워치의 DataStore Preferences에 저장됩니다.
+4. `평가`를 선택해 새 데이터를 60초 수집하고 저장합니다.
+5. `부정맥 가능성 예측` 또는 `급성 스트레스 예측`을 눌러 결과를 확인합니다.
+
+평가 데이터 저장 후에는 다음 분석 중 하나를 선택할 수 있습니다.
+
+- `부정맥 가능성 예측`: `/api/v1/predictions`
+- `급성 스트레스 예측`: `/api/v1/stress/predictions`
+
+급성 스트레스 결과는 `급성 스트레스 정상 범위`, `급성 스트레스 가능성`, `급성 스트레스 분석 불가`로 표시합니다. 이는 실험용 웰니스 분석 결과이며 의료 진단이 아닙니다.
+
+현재 버전은 수동 연결 시험 범위이며 1분 자동 반복 수집·전송은 수행하지 않습니다. 개발 빌드에서만 같은 네트워크의 HTTP 서버 연결을 허용합니다. 토큰은 APK에서 완전히 숨길 수 없으므로 연구용 로컬 테스트에만 사용해야 합니다.
+
+Calibration 또는 Prediction 서버 응답을 정상적으로 받으면 전송에 사용한 워치 내부 CSV와 JSON을 자동 삭제합니다. 네트워크 오류나 서버 요청 실패가 발생하면 다시 전송할 수 있도록 파일을 유지합니다.
+
+현재는 전송 성공 후 파일을 삭제하므로 같은 CSV로 부정맥과 급성 스트레스 분석을 연속 호출하지 않습니다. 두 분석을 모두 시험하려면 평가 데이터를 각각 새로 수집합니다.
+
+앱을 다시 실행했을 때 저장된 개인 기준이 있으면 `평가`가 기본 선택되고, 없으면 `기준 생성`이 기본 선택됩니다. 기존 기준이 있어도 `기준 생성`을 선택해 정상 데이터를 다시 전송하면 새 응답값으로 교체할 수 있습니다. subject ID를 변경하거나 서버가 해당 baseline을 찾을 수 없다고 명확히 응답하면 저장된 기준을 삭제하고 재교정을 안내합니다.

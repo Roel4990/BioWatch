@@ -20,6 +20,9 @@ fun CollectionRoute(
         onCollectionPurposeChange = homeViewModel::selectCollectionPurpose,
         onStartCollection = homeViewModel::startCollection,
         onStopCollection = homeViewModel::stopCollection,
-        onShareFiles = homeViewModel::shareSavedFiles
+        onShareFiles = homeViewModel::shareSavedFiles,
+        onCheckServer = homeViewModel::checkAnalysisServer,
+        onUploadSavedData = homeViewModel::uploadSavedData,
+        onUploadStressPrediction = homeViewModel::uploadStressPrediction
     )
 }

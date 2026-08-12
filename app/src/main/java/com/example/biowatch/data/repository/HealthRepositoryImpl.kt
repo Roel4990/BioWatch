@@ -64,6 +64,8 @@ class HealthRepositoryImpl @Inject constructor(
         })
     }
 
+    override fun deleteSavedFiles(): Boolean = healthDataSource.deleteSavedFiles()
+
     private companion object {
         const val TAG = "HealthRepository"
     }

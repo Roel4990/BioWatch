@@ -19,4 +19,6 @@ interface HealthRepository {
     fun stopCollection()
 
     fun shareSavedFiles()
+
+    fun deleteSavedFiles(): Boolean
 }
