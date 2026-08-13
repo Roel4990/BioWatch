@@ -14,7 +14,7 @@ fun HomeRoute(
     val uiState by homeViewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
-        homeViewModel.startHeartRateTracking()
+        homeViewModel.startContinuousAnalysis()
     }
 
     HomeScreen(

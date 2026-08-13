@@ -5,10 +5,12 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import android.util.Log
 import com.example.biowatch.data.datasource.HealthDataSource
+import com.example.biowatch.data.analysis.ContinuousAnalysisManager
 import com.example.biowatch.data.service.HeartRateForegroundService
 import com.example.biowatch.domain.model.HealthServiceConnectionState
 import com.example.biowatch.domain.model.CollectionConfig
 import com.example.biowatch.domain.model.CollectionState
+import com.example.biowatch.domain.model.ContinuousAnalysisState
 import com.example.biowatch.domain.repository.HealthRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +21,7 @@ import java.io.File
 @Singleton
 class HealthRepositoryImpl @Inject constructor(
     private val healthDataSource: HealthDataSource,
+    private val continuousAnalysisManager: ContinuousAnalysisManager,
     @ApplicationContext private val context: Context
 ) : HealthRepository {
 
@@ -27,6 +30,8 @@ class HealthRepositoryImpl @Inject constructor(
 
     override val heartRate: StateFlow<Int?> = healthDataSource.heartRate
     override val collectionState: StateFlow<CollectionState> = healthDataSource.collectionState
+    override val continuousAnalysisState: StateFlow<ContinuousAnalysisState> =
+        continuousAnalysisManager.state
 
     override fun connect() {
         runCatching { HeartRateForegroundService.start(context) }
@@ -34,6 +39,13 @@ class HealthRepositoryImpl @Inject constructor(
     }
 
     override fun disconnect() = HeartRateForegroundService.stop(context)
+
+    override fun startContinuousAnalysis() {
+        runCatching { HeartRateForegroundService.startContinuousAnalysis(context) }
+            .onFailure { Log.e(TAG, "Failed to start continuous analysis", it) }
+    }
+
+    override fun stopContinuousAnalysis() = continuousAnalysisManager.stop()
 
     override fun startCollection(config: CollectionConfig) =
         healthDataSource.startCollection(config)

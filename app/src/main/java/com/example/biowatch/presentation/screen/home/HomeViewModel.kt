@@ -162,6 +162,15 @@ class HomeViewModel @Inject constructor(
         healthRepository.shareSavedFiles()
     }
 
+    fun startContinuousAnalysis() {
+        permissionDenied.value = false
+        healthRepository.startContinuousAnalysis()
+    }
+
+    fun stopContinuousAnalysis() {
+        healthRepository.stopContinuousAnalysis()
+    }
+
     fun checkAnalysisServer() = runAnalysis {
         val health = analysisApiClient.health()
         analysisState.value = analysisState.value.copy(

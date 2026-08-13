@@ -12,6 +12,7 @@ import android.os.IBinder
 import android.util.Log
 import com.example.biowatch.R
 import com.example.biowatch.data.datasource.HealthDataSource
+import com.example.biowatch.data.analysis.ContinuousAnalysisManager
 import com.example.biowatch.presentation.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -21,6 +22,9 @@ class HeartRateForegroundService : Service() {
 
     @Inject
     lateinit var healthDataSource: HealthDataSource
+
+    @Inject
+    lateinit var continuousAnalysisManager: ContinuousAnalysisManager
 
     override fun onCreate() {
         super.onCreate()
@@ -35,14 +39,23 @@ class HeartRateForegroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            Log.i(TAG, "Stop action received")
-            stopSelf()
+        return when (intent?.action) {
+            ACTION_START_CONTINUOUS_ANALYSIS -> {
+                Log.i(TAG, "Continuous analysis start action received")
+                continuousAnalysisManager.start()
+                START_REDELIVER_INTENT
+            }
+            ACTION_STOP -> {
+                Log.i(TAG, "Stop action received")
+                stopSelf()
+                START_NOT_STICKY
+            }
+            else -> START_NOT_STICKY
         }
-        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        continuousAnalysisManager.stop()
         healthDataSource.disconnect()
         stopForeground(STOP_FOREGROUND_REMOVE)
         Log.i(TAG, "Heart rate foreground service stopped")
@@ -102,11 +115,19 @@ class HeartRateForegroundService : Service() {
         private const val OPEN_APP_REQUEST_CODE = 100
         private const val STOP_SERVICE_REQUEST_CODE = 101
         private const val ACTION_START = "com.example.biowatch.action.START_HEART_RATE"
+        private const val ACTION_START_CONTINUOUS_ANALYSIS =
+            "com.example.biowatch.action.START_CONTINUOUS_ANALYSIS"
         private const val ACTION_STOP = "com.example.biowatch.action.STOP_HEART_RATE"
 
         fun start(context: Context) {
             val intent = Intent(context, HeartRateForegroundService::class.java)
                 .setAction(ACTION_START)
+            context.startForegroundService(intent)
+        }
+
+        fun startContinuousAnalysis(context: Context) {
+            val intent = Intent(context, HeartRateForegroundService::class.java)
+                .setAction(ACTION_START_CONTINUOUS_ANALYSIS)
             context.startForegroundService(intent)
         }
 
