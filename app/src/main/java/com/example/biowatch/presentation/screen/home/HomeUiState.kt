@@ -2,6 +2,9 @@ package com.example.biowatch.presentation.screen.home
 
 import com.example.biowatch.domain.model.CollectionLabel
 import com.example.biowatch.domain.model.CollectionPurpose
+import com.example.biowatch.domain.model.ContinuousAnalysisPhase
+import com.example.biowatch.domain.model.RhythmAnalysisResult
+import com.example.biowatch.domain.model.StressAnalysisResult
 
 data class HomeUiState(
     val heartRate: Int? = null,
@@ -22,7 +25,18 @@ data class HomeUiState(
     val analysisMessage: String? = null,
     val isAnalysisLoading: Boolean = false,
     val hasBaseline: Boolean = false,
-    val baselineCreatedAt: String? = null
+    val baselineCreatedAt: String? = null,
+    val baselineAverageHeartRate: Double? = null,
+    val continuousAnalysisPhase: ContinuousAnalysisPhase = ContinuousAnalysisPhase.STOPPED,
+    val continuousAnalysisProgress: Float = 0f,
+    val continuousAnalysisElapsedSeconds: Long = 0,
+    val continuousAnalysisTargetSeconds: Long = 65,
+    val rhythmResult: RhythmAnalysisResult = RhythmAnalysisResult.WAITING,
+    val abnormalProbability: Double? = null,
+    val stressResult: StressAnalysisResult = StressAnalysisResult.WAITING,
+    val acuteStressProbability: Double? = null,
+    val lastAnalyzedAtMillis: Long? = null,
+    val monitoringMessage: String? = null
 )
 
 enum class HomeStatus {

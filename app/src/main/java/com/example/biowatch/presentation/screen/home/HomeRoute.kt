@@ -19,8 +19,11 @@ fun HomeRoute(
 
     HomeScreen(
         uiState = uiState,
-        onStartTracking = homeViewModel::startHeartRateTracking,
+        onStartTracking = homeViewModel::startContinuousAnalysis,
         onStopTracking = homeViewModel::stopHeartRateTracking,
-        onOpenCollection = onOpenCollection
+        onOpenCollection = {
+            homeViewModel.stopContinuousAnalysis()
+            onOpenCollection()
+        }
     )
 }
