@@ -57,12 +57,7 @@ class ContinuousAnalysisManager @Inject constructor(
         analysisJob?.cancel()
         analysisJob = null
         cleanupCollection()
-        _state.value = _state.value.copy(
-            phase = ContinuousAnalysisPhase.STOPPED,
-            elapsedSeconds = 0,
-            sampleCount = 0,
-            message = null
-        )
+        _state.value = ContinuousAnalysisState()
     }
 
     private suspend fun runAnalysisLoop() {

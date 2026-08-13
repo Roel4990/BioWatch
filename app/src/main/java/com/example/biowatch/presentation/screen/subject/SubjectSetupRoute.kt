@@ -14,6 +14,10 @@ fun SubjectSetupRoute(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.onScreenShown()
+    }
+
     LaunchedEffect(viewModel) {
         viewModel.destinations.collect { destination ->
             when (destination) {

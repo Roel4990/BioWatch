@@ -1,6 +1,8 @@
 package com.example.biowatch.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.wear.compose.navigation.SwipeDismissableNavHost
 import androidx.wear.compose.navigation.composable
@@ -30,11 +32,16 @@ fun BioWatchNavHost(
 ) {
     val navController = rememberSwipeDismissableNavController()
     val homeViewModel: HomeViewModel = hiltViewModel()
+    val currentBackStackEntry by navController.currentBackStackEntryFlow.collectAsState(
+        initial = navController.currentBackStackEntry
+    )
+    val isHomeDestination = currentBackStackEntry?.destination?.route == Destination.HOME
 
     SwipeDismissableNavHost(
         navController = navController,
         startDestination = Destination.STARTUP,
-        modifier = modifier
+        modifier = modifier,
+        userSwipeEnabled = !isHomeDestination
     ) {
         composable(Destination.STARTUP) {
             StartupHealthRoute(
@@ -59,7 +66,7 @@ fun BioWatchNavHost(
             PermissionSetupRoute(
                 onPermissionsReady = {
                     navController.navigate(Destination.HOME) {
-                        popUpTo(Destination.SUBJECT) { inclusive = true }
+                        popUpTo(Destination.SUBJECT) { inclusive = false }
                     }
                 }
             )
@@ -68,7 +75,7 @@ fun BioWatchNavHost(
             PermissionSetupRoute(
                 onPermissionsReady = {
                     navController.navigate(Destination.CALIBRATION) {
-                        popUpTo(Destination.SUBJECT) { inclusive = true }
+                        popUpTo(Destination.SUBJECT) { inclusive = false }
                     }
                 }
             )
@@ -85,7 +92,10 @@ fun BioWatchNavHost(
         composable(Destination.HOME) {
             HomeRoute(
                 homeViewModel = homeViewModel,
-                onOpenCollection = { navController.navigate(Destination.COLLECTION) }
+                onOpenCollection = { navController.navigate(Destination.COLLECTION) },
+                onChangeSubject = {
+                    navController.popBackStack(Destination.SUBJECT, inclusive = false)
+                }
             )
         }
         composable(Destination.COLLECTION) {

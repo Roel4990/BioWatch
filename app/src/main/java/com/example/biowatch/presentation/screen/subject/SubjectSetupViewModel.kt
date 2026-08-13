@@ -4,18 +4,22 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.biowatch.data.storage.BaselinePreferences
 import com.example.biowatch.data.storage.SavedBaseline
+import com.example.biowatch.domain.repository.HealthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 @HiltViewModel
 class SubjectSetupViewModel @Inject constructor(
-    private val baselinePreferences: BaselinePreferences
+    private val baselinePreferences: BaselinePreferences,
+    private val healthRepository: HealthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SubjectSetupUiState())
@@ -25,37 +29,31 @@ class SubjectSetupViewModel @Inject constructor(
     val destinations = destinationChannel.receiveAsFlow()
 
     private var savedBaseline = SavedBaseline()
-    private var hasUserEditedId = false
+    private var baselineLookupJob: Job? = null
 
     init {
         viewModelScope.launch {
-            baselinePreferences.savedBaseline.collect { saved ->
-                savedBaseline = saved
-                val input = if (hasUserEditedId) _uiState.value.subjectId else saved.subjectId
-                _uiState.value = _uiState.value.copy(
-                    subjectId = input,
-                    isLoading = false,
-                    hasMatchingBaseline = saved.baselineId != null && saved.subjectId == input,
-                    baselineCreatedAt = saved.baselineCreatedAt
-                        .takeIf { saved.baselineId != null && saved.subjectId == input }
-                )
-            }
+            val activeBaseline = baselinePreferences.savedBaseline.first()
+            observeBaseline(activeBaseline.subjectId)
         }
     }
 
     fun updateSubjectId(value: String) {
-        hasUserEditedId = true
         val filtered = value
             .filter { it.isLetterOrDigit() || it == '_' || it == '-' }
             .take(MAX_SUBJECT_ID_LENGTH)
         _uiState.value = _uiState.value.copy(
             subjectId = filtered,
-            hasMatchingBaseline = savedBaseline.baselineId != null &&
-                savedBaseline.subjectId == filtered,
-            baselineCreatedAt = savedBaseline.baselineCreatedAt
-                .takeIf { savedBaseline.baselineId != null && savedBaseline.subjectId == filtered },
+            isLoading = filtered.isNotBlank(),
+            hasMatchingBaseline = false,
+            baselineCreatedAt = null,
             errorMessage = null
         )
+        observeBaseline(filtered)
+    }
+
+    fun onScreenShown() {
+        healthRepository.disconnect()
     }
 
     fun continueSetup() {
@@ -73,8 +71,12 @@ class SubjectSetupViewModel @Inject constructor(
     }
 
     fun useExistingBaseline() {
+        val id = _uiState.value.subjectId.trim()
         _uiState.value = _uiState.value.copy(showBaselineChoice = false)
-        destinationChannel.trySend(SubjectSetupDestination.USE_EXISTING_BASELINE)
+        viewModelScope.launch {
+            baselinePreferences.saveSubjectId(id)
+            destinationChannel.send(SubjectSetupDestination.USE_EXISTING_BASELINE)
+        }
     }
 
     fun createNewBaseline() {
@@ -94,6 +96,31 @@ class SubjectSetupViewModel @Inject constructor(
         viewModelScope.launch {
             baselinePreferences.saveSubjectId(id)
             destinationChannel.send(SubjectSetupDestination.CREATE_BASELINE)
+        }
+    }
+
+    private fun observeBaseline(subjectId: String) {
+        baselineLookupJob?.cancel()
+        if (subjectId.isBlank()) {
+            savedBaseline = SavedBaseline(subjectId = subjectId)
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                hasMatchingBaseline = false,
+                baselineCreatedAt = null
+            )
+            return
+        }
+        baselineLookupJob = viewModelScope.launch {
+            baselinePreferences.baselineForSubject(subjectId).collect { saved ->
+                savedBaseline = saved
+                _uiState.value = _uiState.value.copy(
+                    subjectId = saved.subjectId,
+                    isLoading = false,
+                    hasMatchingBaseline = saved.baselineId != null,
+                    baselineCreatedAt = saved.baselineCreatedAt
+                        .takeIf { saved.baselineId != null }
+                )
+            }
         }
     }
 

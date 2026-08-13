@@ -3,6 +3,7 @@ package com.example.biowatch.presentation.screen.startup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.biowatch.data.network.AnalysisApiClient
+import com.example.biowatch.domain.repository.HealthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,13 +13,15 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class StartupHealthViewModel @Inject constructor(
-    private val analysisApiClient: AnalysisApiClient
+    private val analysisApiClient: AnalysisApiClient,
+    private val healthRepository: HealthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StartupHealthUiState())
     val uiState: StateFlow<StartupHealthUiState> = _uiState.asStateFlow()
 
     init {
+        healthRepository.disconnect()
         checkServer()
     }
 

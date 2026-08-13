@@ -2,6 +2,7 @@ package com.example.biowatch.presentation.screen.home
 
 import android.os.SystemClock
 import androidx.annotation.StringRes
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
@@ -49,12 +51,15 @@ fun HomeScreen(
     uiState: HomeUiState,
     onStartTracking: () -> Unit = {},
     onStopTracking: () -> Unit = {},
+    onChangeSubject: () -> Unit = {},
     onOpenCollection: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var titleTapCount by remember { mutableIntStateOf(0) }
     var lastTitleTapMillis by remember { mutableLongStateOf(0L) }
     var showAdminPinDialog by remember { mutableStateOf(false) }
+    var showChangeSubjectDialog by remember { mutableStateOf(false) }
+    val requestSubjectChange = { showChangeSubjectDialog = true }
     val onTitleClick = {
         val now = SystemClock.elapsedRealtime()
         titleTapCount = if (now - lastTitleTapMillis <= TITLE_TAP_TIMEOUT_MILLIS) {
@@ -67,6 +72,10 @@ fun HomeScreen(
             titleTapCount = 0
             showAdminPinDialog = true
         }
+    }
+
+    BackHandler(enabled = !showAdminPinDialog && !showChangeSubjectDialog) {
+        requestSubjectChange()
     }
 
     when {
@@ -96,6 +105,16 @@ fun HomeScreen(
             }
         )
     }
+
+    if (showChangeSubjectDialog) {
+        ChangeSubjectDialog(
+            onDismiss = { showChangeSubjectDialog = false },
+            onConfirm = {
+                showChangeSubjectDialog = false
+                onChangeSubject()
+            }
+        )
+    }
 }
 
 @Composable
@@ -112,12 +131,7 @@ private fun MonitoringContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = stringResource(R.string.home_title),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.clickable(onClick = onTitleClick)
-        )
+        HomeHeader(onTitleClick = onTitleClick)
         Spacer(modifier = Modifier.height(3.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -329,11 +343,7 @@ private fun TrackingStoppedContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = stringResource(R.string.home_title),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.clickable(onClick = onTitleClick)
-        )
+        HomeHeader(onTitleClick = onTitleClick)
         Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = stringResource(R.string.monitoring_stopped),
@@ -361,12 +371,7 @@ private fun WatchNotWornContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = stringResource(R.string.home_title),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.clickable(onClick = onTitleClick)
-        )
+        HomeHeader(onTitleClick = onTitleClick)
         Spacer(modifier = Modifier.height(12.dp))
         Text(
             text = stringResource(R.string.watch_not_worn_title),
@@ -384,6 +389,71 @@ private fun WatchNotWornContent(
         Spacer(modifier = Modifier.height(12.dp))
         Button(onClick = onStopTracking) {
             Text(text = stringResource(R.string.stop_measurement))
+        }
+    }
+}
+
+@Composable
+private fun HomeHeader(
+    onTitleClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.home_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.clickable(onClick = onTitleClick)
+        )
+    }
+
+}
+
+@Composable
+private fun ChangeSubjectDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 12.dp)
+                .fillMaxWidth()
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(R.string.change_subject_title),
+                style = MaterialTheme.typography.titleSmall,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.change_subject_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
+                Button(onClick = onConfirm) {
+                    Text(stringResource(R.string.confirm))
+                }
+            }
         }
     }
 }
