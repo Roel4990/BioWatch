@@ -9,7 +9,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 @Composable
 fun HomeRoute(
     homeViewModel: HomeViewModel = hiltViewModel(),
-    onOpenCollection: () -> Unit = {}
+    onOpenCollection: () -> Unit = {},
+    onChangeSubject: () -> Unit = {}
 ) {
     val uiState by homeViewModel.uiState.collectAsState()
 
@@ -21,6 +22,10 @@ fun HomeRoute(
         uiState = uiState,
         onStartTracking = homeViewModel::startContinuousAnalysis,
         onStopTracking = homeViewModel::stopHeartRateTracking,
+        onChangeSubject = {
+            homeViewModel.stopHeartRateTracking()
+            onChangeSubject()
+        },
         onOpenCollection = {
             homeViewModel.stopContinuousAnalysis()
             onOpenCollection()

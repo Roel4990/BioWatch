@@ -84,6 +84,8 @@
     <string name="permission_activity_recognition">활동 인식</string>
     <string name="current_heart_rate">현재 심박수</string>
     <string name="baseline_average_heart_rate">기준 평균</string>
+    <string name="change_subject_title">사용자 다시 설정</string>
+    <string name="change_subject_description">현재 측정을 중단하고 사용자를 다시 설정하시겠습니까?</string>
     <string name="compact_heart_rate_value">%1$s bpm</string>
     <string name="monitoring_stopped">연속 모니터링이 중단되었습니다.</string>
     <string name="monitoring_sensor_waiting">센서 연결을 기다리고 있습니다.</string>

@@ -61,7 +61,6 @@ fun SubjectSetupScreen(
         BasicTextField(
             value = uiState.subjectId,
             onValueChange = onSubjectIdChange,
-            enabled = !uiState.isLoading,
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
             textStyle = MaterialTheme.typography.bodyMedium.copy(

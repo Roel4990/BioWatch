@@ -53,7 +53,8 @@ class HomeViewModel @Inject constructor(
                 analysisState.value = analysisState.value.copy(
                     baselineId = saved.baselineId,
                     baselineSubjectId = saved.subjectId.takeIf { saved.baselineId != null },
-                    baselineCreatedAt = saved.baselineCreatedAt
+                    baselineCreatedAt = saved.baselineCreatedAt,
+                    baselineAverageHeartRate = saved.averageHeartRate
                 )
             }
         }
@@ -88,6 +89,9 @@ class HomeViewModel @Inject constructor(
         collectionForm
     ) { health, isPermissionDenied, form ->
         val continuous = health.continuousAnalysisState
+        val continuousForSubject = continuous.takeIf {
+            it.subjectId == form.subjectId
+        } ?: ContinuousAnalysisState()
         HomeUiState(
             heartRate = health.heartRate,
             isWatchWorn =
@@ -114,21 +118,21 @@ class HomeViewModel @Inject constructor(
             isAnalysisLoading = form.analysis.isLoading,
             hasBaseline = form.analysis.baselineId != null,
             baselineCreatedAt = form.analysis.baselineCreatedAt,
-            baselineAverageHeartRate = continuous.baselineAverageHeartRate,
-            continuousAnalysisPhase = continuous.phase,
-            continuousAnalysisProgress = when (continuous.phase) {
+            baselineAverageHeartRate = form.analysis.baselineAverageHeartRate,
+            continuousAnalysisPhase = continuousForSubject.phase,
+            continuousAnalysisProgress = when (continuousForSubject.phase) {
                 ContinuousAnalysisPhase.ANALYZING,
                 ContinuousAnalysisPhase.RESULT -> 1f
-                else -> continuous.progress
+                else -> continuousForSubject.progress
             },
-            continuousAnalysisElapsedSeconds = continuous.elapsedSeconds,
-            continuousAnalysisTargetSeconds = continuous.targetSeconds,
-            rhythmResult = continuous.rhythmResult,
-            abnormalProbability = continuous.abnormalProbability,
-            stressResult = continuous.stressResult,
-            acuteStressProbability = continuous.acuteStressProbability,
-            lastAnalyzedAtMillis = continuous.lastAnalyzedAtMillis,
-            monitoringMessage = continuous.message
+            continuousAnalysisElapsedSeconds = continuousForSubject.elapsedSeconds,
+            continuousAnalysisTargetSeconds = continuousForSubject.targetSeconds,
+            rhythmResult = continuousForSubject.rhythmResult,
+            abnormalProbability = continuousForSubject.abnormalProbability,
+            stressResult = continuousForSubject.stressResult,
+            acuteStressProbability = continuousForSubject.acuteStressProbability,
+            lastAnalyzedAtMillis = continuousForSubject.lastAnalyzedAtMillis,
+            monitoringMessage = continuousForSubject.message
         )
     }.stateIn(
         scope = viewModelScope,
@@ -401,6 +405,7 @@ class HomeViewModel @Inject constructor(
         val message: String? = null,
         val baselineId: String? = null,
         val baselineSubjectId: String? = null,
-        val baselineCreatedAt: String? = null
+        val baselineCreatedAt: String? = null,
+        val baselineAverageHeartRate: Double? = null
     )
 }

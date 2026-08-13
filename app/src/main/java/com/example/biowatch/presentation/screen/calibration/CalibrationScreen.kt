@@ -1,10 +1,5 @@
 package com.example.biowatch.presentation.screen.calibration
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
@@ -33,6 +27,10 @@ import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.tooling.preview.devices.WearDevices
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.biowatch.R
 import com.example.biowatch.presentation.theme.BioWatchTheme
 import java.util.Locale
@@ -124,15 +122,8 @@ private fun MeasuringContent(uiState: CalibrationUiState) {
 private fun CalibrationProgress(progress: Float, remainingTime: String) {
     val primary = MaterialTheme.colorScheme.primary
     val track = MaterialTheme.colorScheme.surfaceContainerHigh
-    val transition = rememberInfiniteTransition(label = "calibrationPulse")
-    val pulseScale by transition.animateFloat(
-        initialValue = 0.78f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 760),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "calibrationPulseScale"
+    val heartRateComposition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.heart_rate)
     )
 
     Box(modifier = Modifier.size(92.dp), contentAlignment = Alignment.Center) {
@@ -159,11 +150,13 @@ private fun CalibrationProgress(progress: Float, remainingTime: String) {
                 style = Stroke(strokeWidth, cap = StrokeCap.Round)
             )
         }
-        Box(
+        LottieAnimation(
+            composition = heartRateComposition,
+            iterations = LottieConstants.IterateForever,
             modifier = Modifier
-                .size(12.dp)
-                .scale(pulseScale)
-                .background(primary, MaterialTheme.shapes.extraLarge)
+                .size(34.dp)
+                .align(Alignment.Center)
+                .offset(y = (-7).dp)
         )
         Text(
             text = remainingTime,
