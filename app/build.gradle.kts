@@ -79,6 +79,7 @@ dependencies {
     implementation(libs.hilt.lifecycle.viewmodel.compose)
     implementation(libs.okhttp)
     implementation(libs.datastore.preferences)
+    implementation(libs.lottie.compose)
     implementation(files("libs/samsung-health-sensor-api-1.4.1.aar"))
     kapt(libs.hilt.compiler)
     androidTestImplementation(platform(libs.compose.bom))
