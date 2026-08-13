@@ -92,7 +92,7 @@
     <string name="monitoring_result_ready">최신 분석 결과를 반영했습니다.</string>
     <string name="monitoring_retrying">분석을 다시 시도하고 있습니다.</string>
     <string name="monitoring_baseline_required">개인 기준을 다시 생성해 주세요.</string>
-    <string name="rhythm_analysis_label">심장 리듬</string>
+    <string name="rhythm_analysis_label">부정맥 가능성</string>
     <string name="stress_analysis_label">급성 스트레스</string>
     <string name="analysis_waiting">대기 중</string>
     <string name="analysis_normal">정상 범위</string>

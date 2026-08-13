@@ -201,8 +201,8 @@ class CalibrationViewModel @Inject constructor(
     }
 
     private companion object {
-        const val CALIBRATION_SECONDS = 310L
-        const val MIN_UPLOAD_SECONDS = 300L
+        const val CALIBRATION_SECONDS = 320L
+        const val MIN_UPLOAD_SECONDS = 320L
         const val TIMER_INTERVAL_MILLIS = 1_000L
         const val CONNECTION_TIMEOUT_MILLIS = 30_000L
         const val SUCCESS_DISPLAY_MILLIS = 1_000L

@@ -5,7 +5,7 @@ data class CalibrationUiState(
     val subjectId: String = "",
     val currentHeartRate: Int? = null,
     val elapsedSeconds: Long = 0,
-    val targetSeconds: Long = 310,
+    val targetSeconds: Long = 320,
     val sampleCount: Long = 0,
     val isWatchWorn: Boolean = true,
     val message: String? = null
