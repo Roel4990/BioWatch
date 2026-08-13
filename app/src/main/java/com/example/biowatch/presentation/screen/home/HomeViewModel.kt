@@ -7,6 +7,9 @@ import com.example.biowatch.domain.model.HealthServiceConnectionState
 import com.example.biowatch.domain.model.CollectionConfig
 import com.example.biowatch.domain.model.CollectionLabel
 import com.example.biowatch.domain.model.CollectionPurpose
+import com.example.biowatch.domain.model.CollectionState
+import com.example.biowatch.domain.model.ContinuousAnalysisPhase
+import com.example.biowatch.domain.model.ContinuousAnalysisState
 import com.example.biowatch.domain.repository.HealthRepository
 import com.example.biowatch.data.network.AnalysisApiClient
 import com.example.biowatch.data.storage.BaselinePreferences
@@ -65,38 +68,67 @@ class HomeViewModel @Inject constructor(
         CollectionForm(id, label, purpose, elapsed, analysis)
     }
 
-    val uiState = combine(
+    private val healthSnapshot = combine(
         healthRepository.connectionState,
         healthRepository.heartRate,
         healthRepository.collectionState,
+        healthRepository.continuousAnalysisState
+    ) { connectionState, heartRate, collectionState, continuousAnalysisState ->
+        HealthSnapshot(
+            connectionState = connectionState,
+            heartRate = heartRate,
+            collectionState = collectionState,
+            continuousAnalysisState = continuousAnalysisState
+        )
+    }
+
+    val uiState = combine(
+        healthSnapshot,
         permissionDenied,
         collectionForm
-    ) { connectionState, heartRate, collectionState, isPermissionDenied, form ->
+    ) { health, isPermissionDenied, form ->
+        val continuous = health.continuousAnalysisState
         HomeUiState(
-            heartRate = heartRate,
-            isWatchWorn = connectionState != HealthServiceConnectionState.WatchNotWorn,
+            heartRate = health.heartRate,
+            isWatchWorn =
+                health.connectionState != HealthServiceConnectionState.WatchNotWorn,
             isTracking = !isPermissionDenied &&
-                connectionState != HealthServiceConnectionState.Disconnected,
+                health.connectionState != HealthServiceConnectionState.Disconnected,
             status = if (isPermissionDenied) {
                 HomeStatus.PERMISSION_REQUIRED
             } else {
-                connectionState.toHomeStatus()
+                health.connectionState.toHomeStatus()
             },
             subjectId = form.subjectId,
             collectionLabel = form.label,
             collectionPurpose = form.purpose,
-            isCollecting = collectionState.isCollecting,
+            isCollecting = health.collectionState.isCollecting,
             collectionElapsedSeconds = form.elapsedSeconds,
-            sampleCount = collectionState.sampleCount,
-            samplingRateHz = collectionState.samplingRateHz,
-            ppgSupported = collectionState.ppgSupported,
-            accelerometerSupported = collectionState.accelerometerSupported,
-            canShare = collectionState.savedCsvPath != null,
-            collectionMessage = collectionState.errorMessage,
+            sampleCount = health.collectionState.sampleCount,
+            samplingRateHz = health.collectionState.samplingRateHz,
+            ppgSupported = health.collectionState.ppgSupported,
+            accelerometerSupported = health.collectionState.accelerometerSupported,
+            canShare = health.collectionState.savedCsvPath != null,
+            collectionMessage = health.collectionState.errorMessage,
             analysisMessage = form.analysis.message,
             isAnalysisLoading = form.analysis.isLoading,
             hasBaseline = form.analysis.baselineId != null,
-            baselineCreatedAt = form.analysis.baselineCreatedAt
+            baselineCreatedAt = form.analysis.baselineCreatedAt,
+            baselineAverageHeartRate = continuous.baselineAverageHeartRate,
+            continuousAnalysisPhase = continuous.phase,
+            continuousAnalysisProgress = when (continuous.phase) {
+                ContinuousAnalysisPhase.ANALYZING,
+                ContinuousAnalysisPhase.RESULT -> 1f
+                else -> continuous.progress
+            },
+            continuousAnalysisElapsedSeconds = continuous.elapsedSeconds,
+            continuousAnalysisTargetSeconds = continuous.targetSeconds,
+            rhythmResult = continuous.rhythmResult,
+            abnormalProbability = continuous.abnormalProbability,
+            stressResult = continuous.stressResult,
+            acuteStressProbability = continuous.acuteStressProbability,
+            lastAnalyzedAtMillis = continuous.lastAnalyzedAtMillis,
+            monitoringMessage = continuous.message
         )
     }.stateIn(
         scope = viewModelScope,
@@ -160,6 +192,15 @@ class HomeViewModel @Inject constructor(
 
     fun shareSavedFiles() {
         healthRepository.shareSavedFiles()
+    }
+
+    fun startContinuousAnalysis() {
+        permissionDenied.value = false
+        healthRepository.startContinuousAnalysis()
+    }
+
+    fun stopContinuousAnalysis() {
+        healthRepository.stopContinuousAnalysis()
     }
 
     fun checkAnalysisServer() = runAnalysis {
@@ -346,6 +387,13 @@ class HomeViewModel @Inject constructor(
         val purpose: CollectionPurpose,
         val elapsedSeconds: Long,
         val analysis: AnalysisState
+    )
+
+    private data class HealthSnapshot(
+        val connectionState: HealthServiceConnectionState,
+        val heartRate: Int?,
+        val collectionState: CollectionState,
+        val continuousAnalysisState: ContinuousAnalysisState
     )
 
     private data class AnalysisState(
