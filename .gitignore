@@ -30,6 +30,7 @@ app/libs/*.aar
 
 # Local sensor collection data
 BioWatchData/
+BioWatchRecordings/
 
 # Firebase
 google-services.json
