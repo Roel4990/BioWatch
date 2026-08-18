@@ -73,7 +73,11 @@ class SensorDataRecorder @Inject constructor(
         ppgGreen: Int,
         ppgStatus: Int,
         isOffBody: Int,
-        acceleration: AccelerationSample?
+        acceleration: AccelerationSample?,
+        ppgRed: Int? = null,
+        ppgIr: Int? = null,
+        redStatus: Int? = null,
+        irStatus: Int? = null
     ): CollectionState? {
         val activeWriter = writer ?: return null
         val timestampMillis = toEpochMillis(sensorTimestamp)
@@ -96,6 +100,14 @@ class SensorDataRecorder @Inject constructor(
         activeWriter.write(acceleration?.y?.toString().orEmpty())
         activeWriter.write(",")
         activeWriter.write(acceleration?.z?.toString().orEmpty())
+        activeWriter.write(",")
+        activeWriter.write(ppgRed?.toString().orEmpty())
+        activeWriter.write(",")
+        activeWriter.write(ppgIr?.toString().orEmpty())
+        activeWriter.write(",")
+        activeWriter.write(redStatus?.toString().orEmpty())
+        activeWriter.write(",")
+        activeWriter.write(irStatus?.toString().orEmpty())
         activeWriter.newLine()
         if (ppgTimestamps.size % FLUSH_INTERVAL == 0) activeWriter.flush()
 
@@ -220,7 +232,8 @@ class SensorDataRecorder @Inject constructor(
     private companion object {
         const val DIRECTORY_NAME = "BioWatch"
         const val CSV_HEADER =
-            "Timestamp,HR,PPG_GREEN,PPG_STAT,IS_OFFBODY,ACC_X,ACC_Y,ACC_Z"
+            "Timestamp,HR,PPG_GREEN,PPG_STAT,IS_OFFBODY,ACC_X,ACC_Y,ACC_Z," +
+                "PPG_RED,PPG_IR,RED_STAT,IR_STAT"
         const val FLUSH_INTERVAL = 25
         const val MIN_EPOCH_MILLIS = 946_684_800_000L
         const val MAX_EPOCH_MILLIS = 4_102_444_800_000L

@@ -315,7 +315,10 @@ class SamsungHealthSensorManager @Inject constructor(
     private fun startPpgTracking() {
         if (ppgTracker != null) return
         ppgTracker = healthTrackingService
-            .getHealthTracker(HealthTrackerType.PPG_CONTINUOUS, setOf(PpgType.GREEN))
+            .getHealthTracker(
+                HealthTrackerType.PPG_CONTINUOUS,
+                setOf(PpgType.GREEN, PpgType.RED, PpgType.IR)
+            )
             .also { it.setEventListener(ppgListener) }
     }
 
@@ -380,13 +383,31 @@ class SamsungHealthSensorManager @Inject constructor(
     }
 
     private fun handlePpgData(dataPoint: DataPoint) {
+        val ppgChannels = runCatching {
+            PpgChannels(
+                green = dataPoint.getValue(ValueKey.PpgSet.PPG_GREEN),
+                greenStatus = dataPoint.getValue(ValueKey.PpgSet.GREEN_STATUS),
+                red = dataPoint.getValue(ValueKey.PpgSet.PPG_RED),
+                redStatus = dataPoint.getValue(ValueKey.PpgSet.RED_STATUS),
+                ir = dataPoint.getValue(ValueKey.PpgSet.PPG_IR),
+                irStatus = dataPoint.getValue(ValueKey.PpgSet.IR_STATUS)
+            )
+        }.getOrElse { error ->
+            Log.e(TAG, "Failed to read requested GREEN, RED, and IR PPG data", error)
+            stopCollectionWithError("PPG GREEN·RED·IR 데이터를 읽지 못했습니다.")
+            return
+        }
         val state = sensorDataRecorder.recordPpg(
             sensorTimestamp = dataPoint.timestamp,
             heartRate = _heartRate.value,
-            ppgGreen = dataPoint.getValue(ValueKey.PpgSet.PPG_GREEN),
-            ppgStatus = dataPoint.getValue(ValueKey.PpgSet.GREEN_STATUS),
+            ppgGreen = ppgChannels.green,
+            ppgStatus = ppgChannels.greenStatus,
             isOffBody = if (isWatchWorn == false) 1 else 0,
-            acceleration = latestAcceleration
+            acceleration = latestAcceleration,
+            ppgRed = ppgChannels.red,
+            ppgIr = ppgChannels.ir,
+            redStatus = ppgChannels.redStatus,
+            irStatus = ppgChannels.irStatus
         ) ?: return
         _collectionState.value = state.copy(
             ppgSupported = true,
@@ -394,9 +415,23 @@ class SamsungHealthSensorManager @Inject constructor(
                 HealthTrackerType.ACCELEROMETER_CONTINUOUS in supportedTypes
         )
         if (state.sampleCount == 1L) {
-            Log.i(TAG, "First PPG sensor timestamp: ${dataPoint.timestamp}")
+            Log.i(
+                TAG,
+                "First PPG sensor timestamp: ${dataPoint.timestamp}, " +
+                    "status(GREEN=${ppgChannels.greenStatus}, " +
+                    "RED=${ppgChannels.redStatus}, IR=${ppgChannels.irStatus})"
+            )
         }
     }
+
+    private data class PpgChannels(
+        val green: Int,
+        val greenStatus: Int,
+        val red: Int,
+        val redStatus: Int,
+        val ir: Int,
+        val irStatus: Int
+    )
 
     private fun stopCollectionWithError(message: String) {
         stopCollection()
