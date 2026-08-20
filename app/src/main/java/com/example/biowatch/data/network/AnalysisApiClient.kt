@@ -17,7 +17,10 @@ import javax.inject.Singleton
 data class ServerHealth(
     val status: String,
     val modelLoaded: Boolean,
-    val modelVersion: String
+    val modelVersion: String,
+    val deploymentStage: String,
+    val fallModelLoaded: Boolean,
+    val fallModelVersion: String
 )
 
 data class CalibrationResult(
@@ -44,6 +47,32 @@ data class StressPredictionResult(
     val reason: String?
 )
 
+data class FallInputQuality(
+    val detectedAccelUnit: String,
+    val observedSamplingRateHz: Double?,
+    val rawSampleCount: Int,
+    val resampledSampleCount: Int,
+    val durationSec: Double?
+)
+
+data class FallPredictionResult(
+    val analysisType: String,
+    val subjectId: String?,
+    val result: String,
+    val fallProbability: Double?,
+    val threshold: Double?,
+    val eventTimeSec: Double?,
+    val validWindowCount: Int,
+    val fallCandidateWindowCount: Int,
+    val maxConsecutiveCandidateWindows: Int,
+    val minimumConsecutiveWindows: Int,
+    val inputQuality: FallInputQuality?,
+    val modelVersion: String,
+    val deploymentStage: String,
+    val reason: String?,
+    val medicalDiagnosis: Boolean
+)
+
 @Singleton
 class AnalysisApiClient @Inject constructor(
     private val httpClient: OkHttpClient
@@ -54,7 +83,10 @@ class AnalysisApiClient @Inject constructor(
         ServerHealth(
             status = json.getString("status"),
             modelLoaded = json.getBoolean("model_loaded"),
-            modelVersion = json.optString("model_version")
+            modelVersion = json.optString("model_version"),
+            deploymentStage = json.optString("deployment_stage"),
+            fallModelLoaded = json.optBoolean("fall_model_loaded", false),
+            fallModelVersion = json.optString("fall_model_version")
         )
     }
 
@@ -119,6 +151,44 @@ class AnalysisApiClient @Inject constructor(
         )
     }
 
+    suspend fun predictFall(
+        subjectId: String,
+        csvFile: File
+    ): FallPredictionResult {
+        val json = upload(
+            path = "/api/v1/fall/predictions",
+            fields = mapOf("subject_id" to subjectId),
+            csvFile = csvFile
+        )
+        val inputQuality = json.optJSONObject("input_quality")?.let { quality ->
+            FallInputQuality(
+                detectedAccelUnit = quality.optString("detected_accel_unit"),
+                observedSamplingRateHz = quality.optionalDouble("observed_sampling_rate_hz"),
+                rawSampleCount = quality.optInt("raw_sample_count"),
+                resampledSampleCount = quality.optInt("resampled_sample_count"),
+                durationSec = quality.optionalDouble("duration_sec")
+            )
+        }
+        return FallPredictionResult(
+            analysisType = json.optString("analysis_type"),
+            subjectId = json.optString("subject_id").takeIf(String::isNotBlank),
+            result = json.getString("result"),
+            fallProbability = json.optionalDouble("fall_probability"),
+            threshold = json.optionalDouble("threshold"),
+            eventTimeSec = json.optionalDouble("event_time_sec"),
+            validWindowCount = json.optInt("valid_window_count"),
+            fallCandidateWindowCount = json.optInt("fall_candidate_window_count"),
+            maxConsecutiveCandidateWindows =
+                json.optInt("max_consecutive_candidate_windows"),
+            minimumConsecutiveWindows = json.optInt("minimum_consecutive_windows"),
+            inputQuality = inputQuality,
+            modelVersion = json.optString("model_version"),
+            deploymentStage = json.optString("deployment_stage"),
+            reason = json.optString("reason").takeIf { it.isNotBlank() },
+            medicalDiagnosis = json.optBoolean("medical_diagnosis", false)
+        )
+    }
+
     private suspend fun upload(
         path: String,
         fields: Map<String, String>,
@@ -152,8 +222,14 @@ class AnalysisApiClient @Inject constructor(
             val responseText = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
                 val detail = runCatching { JSONObject(responseText).optString("detail") }.getOrNull()
-                throw IllegalStateException(detail?.takeIf { it.isNotBlank() }
-                    ?: "서버 요청에 실패했습니다. (${response.code})")
+                val message = when (response.code) {
+                    401 -> "서버 인증에 실패했습니다. API 토큰을 확인해 주세요."
+                    413 -> "CSV 파일이 서버 허용 크기인 5MB를 초과했습니다."
+                    415 -> "서버가 전송한 CSV 파일 형식을 지원하지 않습니다."
+                    else -> detail?.takeIf { it.isNotBlank() }
+                        ?: "서버 요청에 실패했습니다. (${response.code})"
+                }
+                throw IllegalStateException(message)
             }
             JSONObject(responseText)
         }
@@ -172,3 +248,6 @@ class AnalysisApiClient @Inject constructor(
         val CSV_MEDIA_TYPE = "text/csv; charset=utf-8".toMediaType()
     }
 }
+
+private fun JSONObject.optionalDouble(name: String): Double? =
+    if (has(name) && !isNull(name)) optDouble(name) else null
