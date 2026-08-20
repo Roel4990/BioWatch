@@ -39,6 +39,7 @@
     <string name="create_personal_baseline">개인 기준 생성 요청</string>
     <string name="request_prediction">부정맥 가능성 예측</string>
     <string name="request_acute_stress_prediction">급성 스트레스 예측</string>
+    <string name="request_fall_prediction">낙상 가능성 분석</string>
     <string name="baseline_required">개인 기준 없음 · 정상 상태 5분 측정 필요</string>
     <string name="baseline_ready">저장된 개인 기준 있음</string>
     <string name="baseline_choice_guide">평가는 기존 기준 사용 · 기준 생성은 새 기준으로 교체</string>

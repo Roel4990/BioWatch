@@ -23,6 +23,7 @@ fun CollectionRoute(
         onShareFiles = homeViewModel::shareSavedFiles,
         onCheckServer = homeViewModel::checkAnalysisServer,
         onUploadSavedData = homeViewModel::uploadSavedData,
-        onUploadStressPrediction = homeViewModel::uploadStressPrediction
+        onUploadStressPrediction = homeViewModel::uploadStressPrediction,
+        onUploadFallPrediction = homeViewModel::uploadFallPrediction
     )
 }

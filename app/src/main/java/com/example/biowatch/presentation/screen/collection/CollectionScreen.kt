@@ -47,6 +47,7 @@ fun CollectionScreen(
     onCheckServer: () -> Unit,
     onUploadSavedData: () -> Unit,
     onUploadStressPrediction: () -> Unit,
+    onUploadFallPrediction: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -136,6 +137,7 @@ fun CollectionScreen(
             onFirst = { onCollectionLabelChange(CollectionLabel.NORMAL) },
             onSecond = { onCollectionLabelChange(CollectionLabel.UNKNOWN) }
         )
+        Spacer(modifier = Modifier.height(8.dp))
         ChoiceRow(
             firstLabel = stringResource(R.string.collection_purpose_calibration),
             secondLabel = stringResource(R.string.collection_purpose_evaluation),
@@ -217,6 +219,16 @@ fun CollectionScreen(
                 ) {
                     Text(
                         stringResource(R.string.request_acute_stress_prediction),
+                        textAlign = TextAlign.Center
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onUploadFallPrediction,
+                    enabled = !uiState.isAnalysisLoading
+                ) {
+                    Text(
+                        stringResource(R.string.request_fall_prediction),
                         textAlign = TextAlign.Center
                     )
                 }
@@ -331,7 +343,8 @@ private fun CollectionScreenPreview() {
             onShareFiles = {},
             onCheckServer = {},
             onUploadSavedData = {},
-            onUploadStressPrediction = {}
+            onUploadStressPrediction = {},
+            onUploadFallPrediction = {}
         )
     }
 }
