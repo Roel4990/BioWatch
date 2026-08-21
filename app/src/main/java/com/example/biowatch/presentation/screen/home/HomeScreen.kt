@@ -5,6 +5,8 @@ import androidx.annotation.StringRes
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +42,7 @@ import androidx.wear.compose.material3.Text
 import androidx.wear.tooling.preview.devices.WearDevices
 import com.example.biowatch.R
 import com.example.biowatch.domain.model.ContinuousAnalysisPhase
+import com.example.biowatch.domain.model.FallAnalysisResult
 import com.example.biowatch.domain.model.RhythmAnalysisResult
 import com.example.biowatch.domain.model.StressAnalysisResult
 import com.example.biowatch.presentation.theme.BioWatchTheme
@@ -127,9 +130,10 @@ private fun MonitoringContent(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 18.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
         HomeHeader(onTitleClick = onTitleClick)
         Spacer(modifier = Modifier.height(3.dp))
@@ -195,6 +199,39 @@ private fun MonitoringContent(
                 modifier = Modifier.weight(1f)
             )
         }
+        Spacer(modifier = Modifier.height(6.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            AnalysisResultCard(
+                label = stringResource(R.string.fall_analysis_label),
+                result = stringResource(uiState.fallResult.stringResource),
+                probability = uiState.fallProbability?.let { probability ->
+                    if (
+                        uiState.fallResult == FallAnalysisResult.FALL_CANDIDATE &&
+                        uiState.fallEventTimeSec != null
+                    ) {
+                        stringResource(
+                            R.string.fall_probability_with_event,
+                            probabilityPercent(probability),
+                            uiState.fallEventTimeSec.roundToInt()
+                        )
+                    } else {
+                        stringResource(
+                            R.string.fall_probability,
+                            probabilityPercent(probability)
+                        )
+                    }
+                } ?: stringResource(R.string.probability_waiting),
+                emphasized = uiState.fallResult == FallAnalysisResult.FALL_CANDIDATE,
+                normal = uiState.fallResult == FallAnalysisResult.NORMAL,
+                modifier = Modifier.fillMaxWidth(0.75f)
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
     }
 }
 
@@ -313,7 +350,7 @@ private fun monitoringStatusText(uiState: HomeUiState): String =
         ContinuousAnalysisPhase.ANALYZING ->
             stringResource(R.string.monitoring_analyzing)
         ContinuousAnalysisPhase.RESULT ->
-            stringResource(R.string.monitoring_result_ready)
+            uiState.monitoringMessage ?: stringResource(R.string.monitoring_result_ready)
         ContinuousAnalysisPhase.RETRYING ->
             uiState.monitoringMessage ?: stringResource(R.string.monitoring_retrying)
         ContinuousAnalysisPhase.BASELINE_REQUIRED ->
@@ -474,6 +511,14 @@ private val StressAnalysisResult.stringResource: Int
         StressAnalysisResult.UNAVAILABLE -> R.string.analysis_unavailable
     }
 
+private val FallAnalysisResult.stringResource: Int
+    @StringRes get() = when (this) {
+        FallAnalysisResult.WAITING -> R.string.analysis_waiting
+        FallAnalysisResult.NORMAL -> R.string.analysis_no_fall
+        FallAnalysisResult.FALL_CANDIDATE -> R.string.analysis_fall_candidate
+        FallAnalysisResult.UNAVAILABLE -> R.string.analysis_unavailable
+    }
+
 private fun probabilityPercent(probability: Double): Int =
     (probability.coerceIn(0.0, 1.0) * 100).roundToInt()
 
@@ -500,6 +545,8 @@ private fun HomeScreenPreview() {
                 abnormalProbability = 0.18,
                 stressResult = StressAnalysisResult.NORMAL,
                 acuteStressProbability = 0.25,
+                fallResult = FallAnalysisResult.NORMAL,
+                fallProbability = 0.12,
                 lastAnalyzedAtMillis = System.currentTimeMillis()
             )
         )

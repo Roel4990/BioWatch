@@ -91,18 +91,23 @@
     <string name="monitoring_stopped">연속 모니터링이 중단되었습니다.</string>
     <string name="monitoring_sensor_waiting">센서 연결을 기다리고 있습니다.</string>
     <string name="monitoring_collecting">다음 분석 수집 중 · %1$s / %2$s</string>
-    <string name="monitoring_analyzing">부정맥과 급성 스트레스 분석 중</string>
+    <string name="monitoring_analyzing">부정맥·스트레스·낙상 분석 중</string>
     <string name="monitoring_result_ready">최신 분석 결과를 반영했습니다.</string>
     <string name="monitoring_retrying">분석을 다시 시도하고 있습니다.</string>
     <string name="monitoring_baseline_required">개인 기준을 다시 생성해 주세요.</string>
     <string name="rhythm_analysis_label">부정맥 가능성</string>
     <string name="stress_analysis_label">급성 스트레스</string>
+    <string name="fall_analysis_label">낙상 가능성</string>
     <string name="analysis_waiting">대기 중</string>
     <string name="analysis_normal">정상 범위</string>
     <string name="analysis_possible_abnormal">이상 가능</string>
     <string name="analysis_stress_warning">주의 필요</string>
+    <string name="analysis_no_fall">의심 없음</string>
+    <string name="analysis_fall_candidate">의심 감지</string>
     <string name="analysis_unavailable">분석 불가</string>
     <string name="abnormal_probability">이상 %1$d%%</string>
     <string name="stress_probability">가능 %1$d%%</string>
+    <string name="fall_probability">가능 %1$d%%</string>
+    <string name="fall_probability_with_event">가능 %1$d%% · %2$d초</string>
     <string name="probability_waiting">확률 --</string>
 </resources>
