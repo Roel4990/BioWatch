@@ -3,6 +3,7 @@ package com.example.biowatch.data.analysis
 import android.util.Log
 import com.example.biowatch.data.datasource.HealthDataSource
 import com.example.biowatch.data.network.AnalysisApiClient
+import com.example.biowatch.data.network.FallPredictionResult
 import com.example.biowatch.data.network.PredictionResult
 import com.example.biowatch.data.network.StressPredictionResult
 import com.example.biowatch.data.storage.BaselinePreferences
@@ -12,6 +13,7 @@ import com.example.biowatch.domain.model.CollectionLabel
 import com.example.biowatch.domain.model.CollectionPurpose
 import com.example.biowatch.domain.model.ContinuousAnalysisPhase
 import com.example.biowatch.domain.model.ContinuousAnalysisState
+import com.example.biowatch.domain.model.FallAnalysisResult
 import com.example.biowatch.domain.model.HealthServiceConnectionState
 import com.example.biowatch.domain.model.RhythmAnalysisResult
 import com.example.biowatch.domain.model.StressAnalysisResult
@@ -195,9 +197,9 @@ class ContinuousAnalysisManager @Inject constructor(
             _state.value = _state.value.copy(
                 phase = ContinuousAnalysisPhase.ANALYZING,
                 elapsedSeconds = ANALYSIS_WINDOW_SECONDS,
-                message = "부정맥과 급성 스트레스 분석 중"
+                message = "부정맥·스트레스·낙상 분석 중"
             )
-            val results = runCatching { requestBothPredictions(baseline, csvFile) }
+            val results = runCatching { requestPredictions(baseline, csvFile) }
             if (results.isFailure) {
                 Log.w(
                     TAG,
@@ -212,7 +214,7 @@ class ContinuousAnalysisManager @Inject constructor(
                 continue
             }
 
-            val (rhythm, stress) = results.getOrThrow()
+            val (rhythm, stress, fallResult) = results.getOrThrow()
             if (rhythm.hasMissingBaseline() || stress.hasMissingBaseline()) {
                 baselinePreferences.clearBaseline()
                 deleteFilesUntilSuccessful()
@@ -225,6 +227,19 @@ class ContinuousAnalysisManager @Inject constructor(
                 return false
             }
 
+            val fall = fallResult.getOrNull()
+            val fallMessage = when {
+                fallResult.isFailure -> {
+                    Log.w(
+                        TAG,
+                        "Fall analysis failed; retrying in the next window",
+                        fallResult.exceptionOrNull()
+                    )
+                    "낙상 분석 실패 · 다음 구간에서 다시 시도합니다."
+                }
+                fall?.result == "unavailable" -> fall.reason.toFallUnavailableMessage()
+                else -> null
+            }
             deleteFilesUntilSuccessful()
             _state.value = _state.value.copy(
                 phase = ContinuousAnalysisPhase.RESULT,
@@ -234,8 +249,11 @@ class ContinuousAnalysisManager @Inject constructor(
                 abnormalProbability = rhythm.abnormalProbability,
                 stressResult = stress.result.toStressResult(),
                 acuteStressProbability = stress.acuteStressProbability,
+                fallResult = fall?.result?.toFallResult() ?: FallAnalysisResult.UNAVAILABLE,
+                fallProbability = fall?.fallProbability,
+                fallEventTimeSec = fall?.eventTimeSec,
                 lastAnalyzedAtMillis = System.currentTimeMillis(),
-                message = null
+                message = fallMessage
             )
             delay(RESULT_DISPLAY_MILLIS)
             return true
@@ -243,10 +261,10 @@ class ContinuousAnalysisManager @Inject constructor(
         return false
     }
 
-    private suspend fun requestBothPredictions(
+    private suspend fun requestPredictions(
         baseline: SavedBaseline,
         csvFile: File
-    ): Pair<PredictionResult, StressPredictionResult> = coroutineScope {
+    ): AnalysisResults = coroutineScope {
         val rhythm = async {
             analysisApiClient.predict(
                 subjectId = baseline.subjectId,
@@ -261,7 +279,23 @@ class ContinuousAnalysisManager @Inject constructor(
                 csvFile = csvFile
             )
         }
-        rhythm.await() to stress.await()
+        val fall = async {
+            runCatching {
+                val health = analysisApiClient.health()
+                check(health.status == "ok" && health.fallModelLoaded) {
+                    "낙상 분석 모델이 준비되지 않았습니다."
+                }
+                analysisApiClient.predictFall(
+                    subjectId = baseline.subjectId,
+                    csvFile = csvFile
+                )
+            }
+        }
+        AnalysisResults(
+            rhythm = rhythm.await(),
+            stress = stress.await(),
+            fall = fall.await()
+        )
     }
 
     private suspend fun deleteFilesUntilSuccessful() {
@@ -305,9 +339,39 @@ class ContinuousAnalysisManager @Inject constructor(
         else -> StressAnalysisResult.UNAVAILABLE
     }
 
+    private fun String.toFallResult(): FallAnalysisResult = when (this) {
+        "normal" -> FallAnalysisResult.NORMAL
+        "fall_candidate" -> FallAnalysisResult.FALL_CANDIDATE
+        else -> FallAnalysisResult.UNAVAILABLE
+    }
+
+    private fun String?.toFallUnavailableMessage(): String {
+        if (isNullOrBlank()) return "유효한 가속도 데이터를 확인해 주세요."
+        val normalized = lowercase()
+        return when {
+            contains("필수 열") || normalized.contains("required column") ||
+                normalized.contains("missing column") || normalized.contains("acc_") ->
+                "가속도 필수 데이터가 누락되었습니다."
+            contains("길이") || normalized.contains("duration") ->
+                "낙상 분석에 필요한 데이터 길이가 부족합니다."
+            contains("샘플") || normalized.contains("sample") ||
+                normalized.contains("sampling") ->
+                "낙상 분석에 필요한 가속도 샘플이 부족합니다."
+            contains("형식") || normalized.contains("format") ->
+                "가속도 데이터 형식을 확인해 주세요."
+            else -> this
+        }
+    }
+
+    private data class AnalysisResults(
+        val rhythm: PredictionResult,
+        val stress: StressPredictionResult,
+        val fall: Result<FallPredictionResult>
+    )
+
     private companion object {
         const val TAG = "ContinuousAnalysis"
-        const val ANALYSIS_WINDOW_SECONDS = 65L
+        const val ANALYSIS_WINDOW_SECONDS = 60L
         const val STATE_CHECK_INTERVAL_MILLIS = 1_000L
         const val RETRY_DELAY_MILLIS = 10_000L
         const val RESULT_DISPLAY_MILLIS = 2_000L

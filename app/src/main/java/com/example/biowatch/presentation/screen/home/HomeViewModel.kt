@@ -135,6 +135,9 @@ class HomeViewModel @Inject constructor(
             abnormalProbability = continuousForSubject.abnormalProbability,
             stressResult = continuousForSubject.stressResult,
             acuteStressProbability = continuousForSubject.acuteStressProbability,
+            fallResult = continuousForSubject.fallResult,
+            fallProbability = continuousForSubject.fallProbability,
+            fallEventTimeSec = continuousForSubject.fallEventTimeSec,
             lastAnalyzedAtMillis = continuousForSubject.lastAnalyzedAtMillis,
             monitoringMessage = continuousForSubject.message
         )
