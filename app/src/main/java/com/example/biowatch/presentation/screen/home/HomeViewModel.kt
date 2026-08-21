@@ -14,6 +14,10 @@ import com.example.biowatch.domain.repository.HealthRepository
 import com.example.biowatch.data.network.AnalysisApiClient
 import com.example.biowatch.data.storage.BaselinePreferences
 import java.io.File
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.util.Locale
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -131,6 +135,9 @@ class HomeViewModel @Inject constructor(
             abnormalProbability = continuousForSubject.abnormalProbability,
             stressResult = continuousForSubject.stressResult,
             acuteStressProbability = continuousForSubject.acuteStressProbability,
+            fallResult = continuousForSubject.fallResult,
+            fallProbability = continuousForSubject.fallProbability,
+            fallEventTimeSec = continuousForSubject.fallEventTimeSec,
             lastAnalyzedAtMillis = continuousForSubject.lastAnalyzedAtMillis,
             monitoringMessage = continuousForSubject.message
         )
@@ -209,10 +216,15 @@ class HomeViewModel @Inject constructor(
 
     fun checkAnalysisServer() = runAnalysis {
         val health = analysisApiClient.health()
+        val fallModelStatus = if (health.fallModelLoaded) {
+            " · 낙상 ${health.fallModelVersion.ifBlank { "준비됨" }}"
+        } else {
+            " · 낙상 모델 미준비"
+        }
         analysisState.value = analysisState.value.copy(
             isLoading = false,
             message = if (health.status == "ok" && health.modelLoaded) {
-                "서버 연결 성공 · ${health.modelVersion}"
+                "서버 연결 성공 · ${health.modelVersion}$fallModelStatus"
             } else {
                 "서버는 연결됐지만 모델이 준비되지 않았습니다."
             }
@@ -324,15 +336,73 @@ class HomeViewModel @Inject constructor(
         )
     }
 
-    private fun runAnalysis(block: suspend () -> Unit) {
+    fun uploadFallPrediction() = runAnalysis(
+        loadingMessage = "낙상 가능성을 분석하고 있습니다."
+    ) {
+        require(collectionPurpose.value == CollectionPurpose.EVALUATION) {
+            "평가 데이터를 선택해 주세요."
+        }
+        require(elapsedSeconds.value >= PREDICTION_MIN_SECONDS) {
+            "평가 데이터는 60초 수집해 주세요."
+        }
+        val state = healthRepository.collectionState.value
+        val csvFile = state.savedCsvPath?.let(::File)
+            ?: error("먼저 평가 데이터를 수집하고 저장해 주세요.")
+        val id = subjectId.value.trim()
+        val health = analysisApiClient.health()
+        require(health.status == "ok" && health.fallModelLoaded) {
+            "낙상 분석 모델이 준비되지 않았습니다."
+        }
+
+        val result = analysisApiClient.predictFall(id, csvFile)
+        val filesDeleted = healthRepository.deleteSavedFiles()
+        val resultText = when (result.result) {
+            "normal" -> "낙상 의심 움직임 없음"
+            "fall_candidate" -> "낙상 의심 움직임 감지"
+            "unavailable" -> "낙상 분석 불가"
+            else -> "알 수 없는 낙상 분석 결과"
+        }
+        val messageLines = buildList {
+            add(resultText)
+            result.fallProbability?.let { probability ->
+                add(
+                    "낙상 가능성: ${String.format(Locale.US, "%.2f", probability * 100)}%"
+                )
+            }
+            if (result.result == "fall_candidate") {
+                result.eventTimeSec?.let { eventTimeSec ->
+                    add(
+                        "감지 시점: 측정 시작 후 " +
+                            "${String.format(Locale.US, "%.2f", eventTimeSec)}초"
+                    )
+                }
+            }
+            if (result.result == "unavailable") {
+                add("사유: ${result.reason.toFallUnavailableMessage()}")
+            }
+            add(if (filesDeleted) "전송 파일 삭제 완료" else "저장 파일 삭제 실패")
+        }
+        analysisState.value = analysisState.value.copy(
+            isLoading = false,
+            message = messageLines.joinToString("\n")
+        )
+    }
+
+    private fun runAnalysis(
+        loadingMessage: String = "서버 요청 중...",
+        block: suspend () -> Unit
+    ) {
         if (analysisState.value.isLoading) return
-        analysisState.value = analysisState.value.copy(isLoading = true, message = "서버 요청 중...")
+        analysisState.value = analysisState.value.copy(
+            isLoading = true,
+            message = loadingMessage
+        )
         viewModelScope.launch {
             runCatching { block() }.onFailure { error ->
                 Log.e(TAG, "Analysis API request failed", error)
                 analysisState.value = analysisState.value.copy(
                     isLoading = false,
-                    message = error.message ?: "서버 요청에 실패했습니다."
+                    message = error.toAnalysisErrorMessage()
                 )
             }
         }
@@ -355,6 +425,31 @@ class HomeViewModel @Inject constructor(
         val normalized = this?.lowercase().orEmpty()
         if (!normalized.contains("baseline")) return false
         return MISSING_BASELINE_MARKERS.any(normalized::contains)
+    }
+
+    private fun String?.toFallUnavailableMessage(): String {
+        if (isNullOrBlank()) return "유효한 가속도 데이터를 확인해 주세요."
+        val normalized = lowercase()
+        return when {
+            contains("필수 열") || normalized.contains("required column") ||
+                normalized.contains("missing column") || normalized.contains("acc_") ->
+                "가속도 필수 데이터가 누락되었습니다."
+            contains("길이") || normalized.contains("duration") ->
+                "분석할 가속도 데이터 길이가 부족합니다."
+            contains("샘플") || normalized.contains("sample") ||
+                normalized.contains("sampling") ->
+                "유효한 가속도 샘플이 부족합니다."
+            contains("형식") || normalized.contains("format") ->
+                "가속도 데이터 형식을 확인해 주세요."
+            else -> this
+        }
+    }
+
+    private fun Throwable.toAnalysisErrorMessage(): String = when (this) {
+        is SocketTimeoutException -> "서버 응답 시간이 초과되었습니다. 다시 시도해 주세요."
+        is ConnectException,
+        is UnknownHostException -> "FastAPI 서버에 연결할 수 없습니다."
+        else -> message ?: "서버 요청에 실패했습니다."
     }
 
     private fun deletionMessage(filesDeleted: Boolean): String =

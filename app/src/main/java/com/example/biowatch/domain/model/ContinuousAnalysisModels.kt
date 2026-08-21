@@ -5,12 +5,15 @@ data class ContinuousAnalysisState(
     val subjectId: String? = null,
     val baselineAverageHeartRate: Double? = null,
     val elapsedSeconds: Long = 0,
-    val targetSeconds: Long = 65,
+    val targetSeconds: Long = 60,
     val sampleCount: Long = 0,
     val rhythmResult: RhythmAnalysisResult = RhythmAnalysisResult.WAITING,
     val abnormalProbability: Double? = null,
     val stressResult: StressAnalysisResult = StressAnalysisResult.WAITING,
     val acuteStressProbability: Double? = null,
+    val fallResult: FallAnalysisResult = FallAnalysisResult.WAITING,
+    val fallProbability: Double? = null,
+    val fallEventTimeSec: Double? = null,
     val lastAnalyzedAtMillis: Long? = null,
     val message: String? = null
 ) {
@@ -39,5 +42,12 @@ enum class StressAnalysisResult {
     WAITING,
     NORMAL,
     POSSIBLE_ACUTE_STRESS,
+    UNAVAILABLE
+}
+
+enum class FallAnalysisResult {
+    WAITING,
+    NORMAL,
+    FALL_CANDIDATE,
     UNAVAILABLE
 }

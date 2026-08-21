@@ -3,6 +3,7 @@ package com.example.biowatch.presentation.screen.home
 import com.example.biowatch.domain.model.CollectionLabel
 import com.example.biowatch.domain.model.CollectionPurpose
 import com.example.biowatch.domain.model.ContinuousAnalysisPhase
+import com.example.biowatch.domain.model.FallAnalysisResult
 import com.example.biowatch.domain.model.RhythmAnalysisResult
 import com.example.biowatch.domain.model.StressAnalysisResult
 
@@ -30,11 +31,14 @@ data class HomeUiState(
     val continuousAnalysisPhase: ContinuousAnalysisPhase = ContinuousAnalysisPhase.STOPPED,
     val continuousAnalysisProgress: Float = 0f,
     val continuousAnalysisElapsedSeconds: Long = 0,
-    val continuousAnalysisTargetSeconds: Long = 65,
+    val continuousAnalysisTargetSeconds: Long = 60,
     val rhythmResult: RhythmAnalysisResult = RhythmAnalysisResult.WAITING,
     val abnormalProbability: Double? = null,
     val stressResult: StressAnalysisResult = StressAnalysisResult.WAITING,
     val acuteStressProbability: Double? = null,
+    val fallResult: FallAnalysisResult = FallAnalysisResult.WAITING,
+    val fallProbability: Double? = null,
+    val fallEventTimeSec: Double? = null,
     val lastAnalyzedAtMillis: Long? = null,
     val monitoringMessage: String? = null
 )
